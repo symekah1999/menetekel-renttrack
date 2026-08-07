@@ -2,10 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FLOORS, MONTHS, PROPERTY, GRAND_TOTAL, fmt } from "@/lib/config";
+import { FLOORS, MONTHS, PROPERTY, GRAND_TOTAL, unitsForFloor, fmt } from "@/lib/config";
 import { loadMonth, monthTotals, floorTotals, MonthData } from "@/lib/store";
-import { downloadExcel } from "@/lib/exportExcel";
-import { downloadPdf } from "@/lib/exportPdf";
+import { downloadYearExcel, downloadFloorExcel, downloadUnitExcel } from "@/lib/exportExcel";
+import { downloadMonthPdf, downloadFloorPdf, downloadUnitPdf } from "@/lib/exportPdf";
+
+const selectStyle: React.CSSProperties = {
+  background: "var(--panel2)", color: "var(--txt)",
+  border: "0.5px solid var(--line)", borderRadius: 8,
+  padding: "8px 12px", fontSize: 12.5,
+};
 
 export default function ReportsPage() {
   const now = new Date();
@@ -13,6 +19,9 @@ export default function ReportsPage() {
   const [month, setMonth] = useState(initialMonth);
   const [data, setData] = useState<MonthData>([]);
   const [trend, setTrend] = useState<number[]>([]);
+  const [dlFloor, setDlFloor] = useState(0);
+  const [dlUnit, setDlUnit] = useState("0|Unit 1");
+  const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
     setData(loadMonth(month));
@@ -20,6 +29,23 @@ export default function ReportsPage() {
   }, [month]);
 
   const gt = monthTotals(data);
+  const [unitFloor, unitLabel] = dlUnit.split("|");
+
+  async function run(key: string, fn: () => void | Promise<void>) {
+    setBusy(key);
+    try { await fn(); } finally { setBusy(null); }
+  }
+
+  const dlBtn = (key: string, label: string, fn: () => void | Promise<void>, gold = false) => (
+    <button
+      className={gold ? "btn-gold" : "btn-outline"}
+      disabled={busy !== null}
+      style={{ opacity: busy && busy !== key ? 0.5 : 1 }}
+      onClick={() => run(key, fn)}
+    >
+      {busy === key ? "Preparing…" : label}
+    </button>
+  );
 
   return (
     <main className="shell" style={{ paddingTop: 36 }}>
@@ -32,15 +58,7 @@ export default function ReportsPage() {
       </p>
 
       <div style={{ marginBottom: 18 }}>
-        <select
-          value={month}
-          onChange={(e) => setMonth(+e.target.value)}
-          style={{
-            background: "var(--panel2)", color: "var(--txt)",
-            border: "0.5px solid var(--line)", borderRadius: 8,
-            padding: "8px 12px", fontSize: 12.5,
-          }}
-        >
+        <select value={month} onChange={(e) => setMonth(+e.target.value)} style={selectStyle}>
           {MONTHS.map((m, i) => (
             <option key={m} value={i} style={{ color: "#000" }}>{m} {PROPERTY.year}</option>
           ))}
@@ -69,13 +87,12 @@ export default function ReportsPage() {
           <tbody>
             {FLOORS.map((f) => {
               const t = floorTotals(data, f);
-              const count = f === 0 ? 6 : 7;
               return (
                 <tr key={f}>
                   <td style={{ fontWeight: 600 }}>
                     Floor {f}{f === 0 && <span style={{ fontSize: 9, color: "rgba(200,169,81,0.65)" }}> (merged 6+7)</span>}
                   </td>
-                  <td style={{ color: "var(--txt-3)" }}>{count}</td>
+                  <td style={{ color: "var(--txt-3)" }}>{f === 0 ? 6 : 7}</td>
                   <td style={{ textAlign: "right" }}>{t.required.toLocaleString()}</td>
                   <td style={{ textAlign: "right", color: "var(--green)" }}>{t.paid.toLocaleString()}</td>
                   <td style={{ textAlign: "right", color: t.balance > 0 ? "var(--red)" : "var(--green)" }}>
@@ -128,14 +145,68 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", paddingBottom: 8 }}>
-        <button className="btn-gold" onClick={() => downloadExcel()}>
-          ⬇ Download Excel workbook (12 months)
-        </button>
-        <button className="btn-outline" onClick={() => downloadPdf(month)}>
-          ⬇ Download PDF summary ({MONTHS[month]})
-        </button>
+      <div className="card card-gold" style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 3 }}>Download centre</div>
+        <p style={{ fontSize: 11, color: "var(--txt-2)", marginBottom: 18, lineHeight: 1.6 }}>
+          Styled, print-ready documents. Excel files carry the full ledger; PDFs
+          include totals, defaulter lists, and signature lines.
+        </p>
+
+        <div style={{ borderBottom: "0.5px solid var(--line)", paddingBottom: 16, marginBottom: 16 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--gold)", marginBottom: 10 }}>
+            Whole building
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {dlBtn("yx", "⬇ Year Excel workbook (summary + 12 months)", () => downloadYearExcel(), true)}
+            {dlBtn("mp", `⬇ ${MONTHS[month]} PDF report`, () => downloadMonthPdf(month))}
+          </div>
+        </div>
+
+        <div style={{ borderBottom: "0.5px solid var(--line)", paddingBottom: 16, marginBottom: 16 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--gold)", marginBottom: 10 }}>
+            Per floor · {MONTHS[month]}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <select value={dlFloor} onChange={(e) => setDlFloor(+e.target.value)} style={selectStyle}>
+              {FLOORS.map((f) => (
+                <option key={f} value={f} style={{ color: "#000" }}>
+                  Floor {f} ({f === 0 ? "6 units" : "7 units"})
+                </option>
+              ))}
+            </select>
+            {dlBtn("fx", "⬇ Floor Excel", () => downloadFloorExcel(month, dlFloor))}
+            {dlBtn("fp", "⬇ Floor PDF", () => downloadFloorPdf(month, dlFloor))}
+          </div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--gold)", marginBottom: 10 }}>
+            Individual unit · full-year statement
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <select value={dlUnit} onChange={(e) => setDlUnit(e.target.value)} style={selectStyle}>
+              {FLOORS.map((f) => (
+                <optgroup key={f} label={`Floor ${f}`}>
+                  {unitsForFloor(f).map((u) => (
+                    <option key={`${f}|${u.label}`} value={`${f}|${u.label}`} style={{ color: "#000" }}>
+                      Floor {f} · {u.label}{u.merged ? " (merged)" : ""} — KShs {u.rent.toLocaleString()}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {dlBtn("ux", "⬇ Unit statement Excel", () => downloadUnitExcel(+unitFloor, unitLabel))}
+            {dlBtn("up", "⬇ Unit statement PDF", () => downloadUnitPdf(+unitFloor, unitLabel))}
+          </div>
+          <div style={{ fontSize: 10, color: "var(--txt-3)", marginTop: 10 }}>
+            A unit statement shows all 12 months for that unit — ideal for tenant records or disputes.
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingBottom: 8 }}>
         <Link href="/collect" className="btn-outline">✎ Edit entries</Link>
+        <Link href="/" className="btn-outline">← Property</Link>
       </div>
     </main>
   );
