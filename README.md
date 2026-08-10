@@ -52,3 +52,25 @@ npm i -g vercel
 vercel          # first run: link/create project, accept defaults
 vercel --prod   # promote to production
 ```
+
+## Accounts & cloud sync (v5)
+
+Anyone can create an account (email + password with email verification). All
+**approved** accounts share the same building records. The **first account ever
+created becomes the owner** and approves/revokes members in Settings → Team.
+Without Supabase configured, the app runs in local mode (no login, data stays
+in the browser).
+
+### One-time setup (~10 min)
+
+1. Create a free project at supabase.com.
+2. SQL Editor → New query → paste the contents of `supabase-setup.sql` → Run.
+3. Authentication → URL Configuration → set **Site URL** to your Vercel URL.
+4. Project Settings → API → copy **Project URL** and **anon public** key.
+5. Vercel → your project → Settings → Environment Variables → add:
+   - `NEXT_PUBLIC_SUPABASE_URL` = the Project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = the anon key
+6. Redeploy (Deployments → ⋯ → Redeploy), open the site, **create your own
+   account first** (it becomes owner), confirm via the email link, sign in.
+7. Settings → Team → "Upload this device's local records to the cloud" to
+   migrate existing data.

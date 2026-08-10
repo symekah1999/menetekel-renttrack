@@ -9,8 +9,9 @@ import {
 } from "@/lib/store";
 import { downloadReceiptPdf } from "@/lib/exportPdf";
 import { parseMpesaCsv, autoMatch, MpesaTxn } from "@/lib/mpesa";
+import AuthGuard from "@/components/AuthGuard";
 
-export default function CollectPage() {
+function CollectPageInner() {
   const [year, setYear] = useState(2026);
   const now = new Date();
   const [month, setMonth] = useState(0);
@@ -331,5 +332,14 @@ export default function CollectPage() {
         <Link href="/reports" className="btn-gold">Review summary →</Link>
       </div>
     </main>
+  );
+}
+
+
+export default function CollectPage() {
+  return (
+    <AuthGuard>
+      <CollectPageInner />
+    </AuthGuard>
   );
 }

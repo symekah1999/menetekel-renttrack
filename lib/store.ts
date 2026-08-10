@@ -123,6 +123,10 @@ export function saveMonth(mi: number, data: MonthData, year = getActiveYear()): 
   } catch {
     /* storage full or blocked */
   }
+  // Fire-and-forget cloud sync (no-op when cloud isn't configured or signed out)
+  import("./cloud")
+    .then((c) => c.pushMonth(year, mi, data))
+    .catch(() => { /* offline - localStorage still holds the data */ });
 }
 
 /* ---------- arrears (carry-over balances) ---------- */

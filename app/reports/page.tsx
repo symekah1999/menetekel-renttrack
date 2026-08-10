@@ -6,6 +6,7 @@ import { FLOORS, MONTHS, PROPERTY, unitsForFloor, fmt } from "@/lib/config";
 import { monthTotalsFull, floorTotalsFull, getActiveYear, Totals } from "@/lib/store";
 import { downloadYearExcel, downloadFloorExcel, downloadUnitExcel } from "@/lib/exportExcel";
 import { downloadMonthPdf, downloadFloorPdf, downloadUnitPdf } from "@/lib/exportPdf";
+import AuthGuard from "@/components/AuthGuard";
 
 const selectStyle: React.CSSProperties = {
   background: "var(--panel2)", color: "var(--txt)",
@@ -18,7 +19,7 @@ const EMPTY: Totals = {
   rate: 100, fullyPaid: 0, defaulters: 0, occupied: 0, vacant: 0,
 };
 
-export default function ReportsPage() {
+function ReportsPageInner() {
   const [year, setYear] = useState(2026);
   const [month, setMonth] = useState(0);
   const [gt, setGt] = useState<Totals>(EMPTY);
@@ -223,5 +224,14 @@ export default function ReportsPage() {
         <Link href="/" className="btn-outline">← Property</Link>
       </div>
     </main>
+  );
+}
+
+
+export default function ReportsPage() {
+  return (
+    <AuthGuard>
+      <ReportsPageInner />
+    </AuthGuard>
   );
 }
