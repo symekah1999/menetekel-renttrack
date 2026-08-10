@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FLOORS, MONTHS, PROPERTY, GRAND_TOTAL, unitsForFloor, fmt } from "@/lib/config";
-import { loadMonth, monthTotals, floorTotals, MonthData } from "@/lib/store";
+import { FLOORS, MONTHS, PROPERTY, unitsForFloor, fmt } from "@/lib/config";
+import { monthTotalsFull, floorTotalsFull, getActiveYear, Totals } from "@/lib/store";
 import { downloadYearExcel, downloadFloorExcel, downloadUnitExcel } from "@/lib/exportExcel";
 import { downloadMonthPdf, downloadFloorPdf, downloadUnitPdf } from "@/lib/exportPdf";
 
@@ -13,22 +13,34 @@ const selectStyle: React.CSSProperties = {
   padding: "8px 12px", fontSize: 12.5,
 };
 
+const EMPTY: Totals = {
+  monthCharges: 0, arrears: 0, totalDue: 0, paid: 0, balance: 0,
+  rate: 100, fullyPaid: 0, defaulters: 0, occupied: 0, vacant: 0,
+};
+
 export default function ReportsPage() {
-  const now = new Date();
-  const initialMonth = now.getFullYear() === PROPERTY.year ? now.getMonth() : 0;
-  const [month, setMonth] = useState(initialMonth);
-  const [data, setData] = useState<MonthData>([]);
+  const [year, setYear] = useState(2026);
+  const [month, setMonth] = useState(0);
+  const [gt, setGt] = useState<Totals>(EMPTY);
+  const [floorT, setFloorT] = useState<Totals[]>([]);
   const [trend, setTrend] = useState<number[]>([]);
   const [dlFloor, setDlFloor] = useState(0);
   const [dlUnit, setDlUnit] = useState("0|Unit 1");
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
-    setData(loadMonth(month));
-    setTrend(MONTHS.map((_, mi) => monthTotals(loadMonth(mi)).rate));
-  }, [month]);
+    const y = getActiveYear();
+    setYear(y);
+    const now = new Date();
+    setMonth(now.getFullYear() === y ? now.getMonth() : 0);
+  }, []);
 
-  const gt = monthTotals(data);
+  useEffect(() => {
+    setGt(monthTotalsFull(month));
+    setFloorT(FLOORS.map((f) => floorTotalsFull(month, f)));
+    setTrend(MONTHS.map((_, mi) => monthTotalsFull(mi).rate));
+  }, [month, year]);
+
   const [unitFloor, unitLabel] = dlUnit.split("|");
 
   async function run(key: string, fn: () => void | Promise<void>) {
@@ -51,24 +63,25 @@ export default function ReportsPage() {
     <main className="shell" style={{ paddingTop: 36 }}>
       <div className="eyebrow">Summary</div>
       <h1 className="h-page">
-        {MONTHS[month]} {PROPERTY.year} — <span className="gold-text">Collection report</span>
+        {MONTHS[month]} {year} — <span className="gold-text">Collection report</span>
       </h1>
       <p className="h-sub">
-        {PROPERTY.name} · 5 floors · 34 units · {PROPERTY.paymentMode}
+        {PROPERTY.name} · 5 floors · 34 units · {PROPERTY.paymentMode} · balances include arrears carried forward
       </p>
 
       <div style={{ marginBottom: 18 }}>
         <select value={month} onChange={(e) => setMonth(+e.target.value)} style={selectStyle}>
           {MONTHS.map((m, i) => (
-            <option key={m} value={i} style={{ color: "#000" }}>{m} {PROPERTY.year}</option>
+            <option key={m} value={i} style={{ color: "#000" }}>{m} {year}</option>
           ))}
         </select>
       </div>
 
-      <div className="kpi-grid">
-        <div className="kpi"><div className="n" style={{ color: "var(--gold)" }}>{fmt(gt.required)}</div><div className="l">Total required</div></div>
+      <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(5,1fr)" }}>
+        <div className="kpi"><div className="n">{fmt(gt.monthCharges)}</div><div className="l">Month charges</div></div>
+        <div className="kpi"><div className="n" style={{ color: gt.arrears > 0 ? "var(--red)" : "var(--green)" }}>{fmt(gt.arrears)}</div><div className="l">Arrears b/f</div></div>
+        <div className="kpi"><div className="n" style={{ color: "var(--gold)" }}>{fmt(gt.totalDue)}</div><div className="l">Total due</div></div>
         <div className="kpi"><div className="n" style={{ color: "var(--green)" }}>{fmt(gt.paid)}</div><div className="l">Collected</div></div>
-        <div className="kpi"><div className="n" style={{ color: gt.balance > 0 ? "var(--red)" : "var(--green)" }}>{fmt(gt.balance)}</div><div className="l">Outstanding</div></div>
         <div className="kpi"><div className="n" style={{ color: gt.rate >= 80 ? "var(--green)" : "var(--red)" }}>{gt.rate}%</div><div className="l">Collection rate</div></div>
       </div>
 
@@ -76,49 +89,53 @@ export default function ReportsPage() {
         <table className="data">
           <thead>
             <tr>
-              <th>Floor</th><th>Units</th>
-              <th style={{ textAlign: "right" }}>Required</th>
+              <th>Floor</th><th>Occupied</th>
+              <th style={{ textAlign: "right" }}>Charges</th>
+              <th style={{ textAlign: "right" }}>Arrears</th>
+              <th style={{ textAlign: "right" }}>Total due</th>
               <th style={{ textAlign: "right" }}>Collected</th>
               <th style={{ textAlign: "right" }}>Balance</th>
               <th>Rate</th>
-              <th style={{ textAlign: "right" }}>Defaulters</th>
             </tr>
           </thead>
           <tbody>
-            {FLOORS.map((f) => {
-              const t = floorTotals(data, f);
+            {FLOORS.map((f, fi) => {
+              const t = floorT[fi] ?? EMPTY;
               return (
                 <tr key={f}>
                   <td style={{ fontWeight: 600 }}>
                     Floor {f}{f === 0 && <span style={{ fontSize: 9, color: "rgba(200,169,81,0.65)" }}> (merged 6+7)</span>}
                   </td>
-                  <td style={{ color: "var(--txt-3)" }}>{f === 0 ? 6 : 7}</td>
-                  <td style={{ textAlign: "right" }}>{t.required.toLocaleString()}</td>
+                  <td style={{ color: "var(--txt-3)" }}>{t.occupied}/{t.occupied + t.vacant}</td>
+                  <td style={{ textAlign: "right" }}>{t.monthCharges.toLocaleString()}</td>
+                  <td style={{ textAlign: "right", color: t.arrears > 0 ? "var(--red)" : "var(--txt-3)" }}>
+                    {t.arrears !== 0 ? t.arrears.toLocaleString() : "—"}
+                  </td>
+                  <td style={{ textAlign: "right", fontWeight: 600 }}>{t.totalDue.toLocaleString()}</td>
                   <td style={{ textAlign: "right", color: "var(--green)" }}>{t.paid.toLocaleString()}</td>
                   <td style={{ textAlign: "right", color: t.balance > 0 ? "var(--red)" : "var(--green)" }}>
                     {t.balance > 0 ? t.balance.toLocaleString() : "—"}
                   </td>
                   <td style={{ minWidth: 90 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: t.rate >= 80 ? "var(--green)" : "var(--red)" }}>{t.rate}%</span>
-                    <div className="pbar"><div className="pfill" style={{ width: `${t.rate}%`, background: t.rate >= 80 ? "var(--green)" : "var(--red)" }} /></div>
-                  </td>
-                  <td style={{ textAlign: "right", color: t.defaulters > 0 ? "var(--red)" : "var(--green)" }}>
-                    {t.defaulters > 0 ? t.defaulters : "—"}
+                    <div className="pbar"><div className="pfill" style={{ width: `${Math.min(t.rate, 100)}%`, background: t.rate >= 80 ? "var(--green)" : "var(--red)" }} /></div>
                   </td>
                 </tr>
               );
             })}
             <tr style={{ borderTop: "0.5px solid rgba(255,255,255,0.16)" }}>
-              <td colSpan={2} style={{ fontWeight: 800, color: "var(--gold)" }}>Grand total</td>
-              <td style={{ textAlign: "right", fontWeight: 700 }}>{gt.required.toLocaleString()}</td>
+              <td style={{ fontWeight: 800, color: "var(--gold)" }}>Grand total</td>
+              <td style={{ color: "var(--txt-3)" }}>{gt.occupied}/34</td>
+              <td style={{ textAlign: "right", fontWeight: 700 }}>{gt.monthCharges.toLocaleString()}</td>
+              <td style={{ textAlign: "right", fontWeight: 700, color: gt.arrears > 0 ? "var(--red)" : "var(--txt-3)" }}>
+                {gt.arrears !== 0 ? gt.arrears.toLocaleString() : "—"}
+              </td>
+              <td style={{ textAlign: "right", fontWeight: 700 }}>{gt.totalDue.toLocaleString()}</td>
               <td style={{ textAlign: "right", fontWeight: 700, color: "var(--green)" }}>{gt.paid.toLocaleString()}</td>
               <td style={{ textAlign: "right", fontWeight: 700, color: gt.balance > 0 ? "var(--red)" : "var(--green)" }}>
                 {gt.balance > 0 ? gt.balance.toLocaleString() : "—"}
               </td>
               <td style={{ fontWeight: 800 }}>{gt.rate}%</td>
-              <td style={{ textAlign: "right", color: gt.defaulters > 0 ? "var(--red)" : "var(--green)" }}>
-                {gt.defaulters > 0 ? gt.defaulters : "—"}
-              </td>
             </tr>
           </tbody>
         </table>
@@ -126,13 +143,13 @@ export default function ReportsPage() {
 
       <div className="card" style={{ marginBottom: 22 }}>
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--txt-3)", marginBottom: 14 }}>
-          Collection rate by month — {PROPERTY.year}
+          Collection rate by month — {year}
         </div>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 90 }}>
           {trend.map((r, i) => (
             <div key={i} style={{ flex: 1, textAlign: "center" }}>
               <div style={{
-                height: r > 0 ? Math.round((r / 100) * 74) + 4 : 4,
+                height: r > 0 ? Math.round((Math.min(r, 100) / 100) * 74) + 4 : 4,
                 background: r === 0 ? "rgba(255,255,255,0.08)" : r >= 80 ? "var(--blue)" : "var(--red)",
                 borderRadius: "3px 3px 0 0",
               }} />
@@ -140,16 +157,13 @@ export default function ReportsPage() {
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 10, color: "var(--txt-3)", marginTop: 10 }}>
-          Target: {fmt(GRAND_TOTAL)} per month · bars show % collected
-        </div>
       </div>
 
       <div className="card card-gold" style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 3 }}>Download centre</div>
         <p style={{ fontSize: 11, color: "var(--txt-2)", marginBottom: 18, lineHeight: 1.6 }}>
-          Styled, print-ready documents. Excel files carry the full ledger; PDFs
-          include totals, defaulter lists, and signature lines.
+          Styled, print-ready documents with water charges, arrears, and vacancy
+          reflected throughout. PDFs carry signature lines.
         </p>
 
         <div style={{ borderBottom: "0.5px solid var(--line)", paddingBottom: 16, marginBottom: 16 }}>
@@ -157,7 +171,7 @@ export default function ReportsPage() {
             Whole building
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {dlBtn("yx", "⬇ Year Excel workbook (summary + 12 months)", () => downloadYearExcel(), true)}
+            {dlBtn("yx", `⬇ ${year} Excel workbook (summary + 12 months)`, () => downloadYearExcel(), true)}
             {dlBtn("mp", `⬇ ${MONTHS[month]} PDF report`, () => downloadMonthPdf(month))}
           </div>
         </div>
@@ -199,7 +213,7 @@ export default function ReportsPage() {
             {dlBtn("up", "⬇ Unit statement PDF", () => downloadUnitPdf(+unitFloor, unitLabel))}
           </div>
           <div style={{ fontSize: 10, color: "var(--txt-3)", marginTop: 10 }}>
-            A unit statement shows all 12 months for that unit — ideal for tenant records or disputes.
+            Unit statements show rent, water, payments, and a running balance across all 12 months.
           </div>
         </div>
       </div>

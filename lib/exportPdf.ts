@@ -3,7 +3,10 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { MONTHS, PROPERTY, FLOORS, unitsForFloor, fmt } from "./config";
-import { loadMonth, floorTotals, monthTotals, Entry } from "./store";
+import {
+  loadMonth, monthTotalsFull, floorTotalsFull, arrearsMapFor,
+  monthDue, getActiveYear, Entry,
+} from "./store";
 
 const NAVY: [number, number, number] = [15, 44, 82];
 const GOLD: [number, number, number] = [200, 169, 81];
@@ -19,7 +22,6 @@ function header(doc: jsPDF, title: string, subtitle: string) {
   doc.rect(0, 0, w, 30, "F");
   doc.setFillColor(...GOLD);
   doc.rect(0, 30, w, 1.6, "F");
-  doc.setFillColor(...GOLD);
   doc.roundedRect(12, 8, 14, 14, 2, 2, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
@@ -35,8 +37,7 @@ function header(doc: jsPDF, title: string, subtitle: string) {
 }
 
 function kpiBoxes(
-  doc: jsPDF,
-  y: number,
+  doc: jsPDF, y: number,
   items: { label: string; value: string; color?: [number, number, number] }[]
 ) {
   const w = doc.internal.pageSize.getWidth();
@@ -48,11 +49,11 @@ function kpiBoxes(
     doc.setDrawColor(216, 222, 233);
     doc.roundedRect(x, y, bw, 18, 2, 2, "FD");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
+    doc.setFontSize(10.5);
     doc.setTextColor(...(it.color ?? NAVY));
     doc.text(it.value, x + 4, y + 8.5);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(...GREY);
     doc.text(it.label.toUpperCase(), x + 4, y + 14.5);
   });
@@ -92,17 +93,18 @@ function signatureBlock(doc: jsPDF, y: number) {
 const tableTheme = {
   headStyles: {
     fillColor: NAVY, textColor: [255, 255, 255] as [number, number, number],
-    fontSize: 8, fontStyle: "bold" as const, halign: "center" as const,
+    fontSize: 7.5, fontStyle: "bold" as const, halign: "center" as const,
   },
-  bodyStyles: { fontSize: 8.5, textColor: [40, 45, 55] as [number, number, number] },
+  bodyStyles: { fontSize: 8, textColor: [40, 45, 55] as [number, number, number] },
   alternateRowStyles: { fillColor: [246, 248, 251] as [number, number, number] },
-  styles: { lineColor: [216, 222, 233] as [number, number, number], lineWidth: 0.2, cellPadding: 2.2 },
+  styles: { lineColor: [216, 222, 233] as [number, number, number], lineWidth: 0.2, cellPadding: 2 },
 };
 
-function balCell(rent: number, paid: number) {
-  const bal = rent - paid;
+const R = (v: number | string) => ({ content: typeof v === "number" ? v.toLocaleString() : v, styles: { halign: "right" as const } });
+
+function balCell(bal: number, paid: number) {
   return {
-    content: paid > 0 && bal <= 0 ? "PAID" : bal.toLocaleString(),
+    content: paid > 0 && bal <= 0 ? (bal < 0 ? `CR ${(-bal).toLocaleString()}` : "PAID") : bal.toLocaleString(),
     styles: {
       fontStyle: "bold" as const,
       textColor: paid > 0 && bal <= 0 ? GREEN : bal > 0 ? RED : GREY,
@@ -111,64 +113,61 @@ function balCell(rent: number, paid: number) {
   };
 }
 
+/* ---------------- month report ---------------- */
+
 export function downloadMonthPdf(mi: number) {
-  const data = loadMonth(mi);
-  const gt = monthTotals(data);
+  const year = getActiveYear();
+  const data = loadMonth(mi, year);
+  const arrMap = arrearsMapFor(mi, year);
+  const gt = monthTotalsFull(mi, year);
   const doc = new jsPDF() as Doc;
 
   header(doc, `${PROPERTY.name} — Collection Report`,
-    `${MONTHS[mi]} ${PROPERTY.year} · 5 floors · 34 units · ${PROPERTY.paymentMode} · Due ${PROPERTY.dueDay}th`);
+    `${MONTHS[mi]} ${year} · 5 floors · 34 units · ${PROPERTY.paymentMode} · Due ${PROPERTY.dueDay}th`);
 
-  let y = kpiBoxes(doc, 38, [
-    { label: "Required", value: fmt(gt.required) },
+  const y = kpiBoxes(doc, 38, [
+    { label: "Charges", value: fmt(gt.monthCharges) },
+    { label: "Arrears b/f", value: fmt(gt.arrears), color: gt.arrears > 0 ? RED : GREEN },
+    { label: "Total due", value: fmt(gt.totalDue) },
     { label: "Collected", value: fmt(gt.paid), color: GREEN },
-    { label: "Outstanding", value: fmt(gt.balance), color: gt.balance > 0 ? RED : GREEN },
     { label: "Rate", value: `${gt.rate}%`, color: gt.rate >= 80 ? GREEN : RED },
   ]);
 
   autoTable(doc, {
     startY: y,
-    head: [["Floor", "Units", "Required", "Collected", "Balance", "Rate", "Defaulters"]],
+    head: [["Floor", "Occ.", "Charges", "Arrears", "Total due", "Collected", "Balance", "Rate"]],
     body: FLOORS.map((f) => {
-      const t = floorTotals(data, f);
+      const t = floorTotalsFull(mi, f, year);
       return [
-        `Floor ${f}${f === 0 ? "  (Unit 6+7 merged)" : ""}`,
-        { content: String(f === 0 ? 6 : 7), styles: { halign: "center" as const } },
-        { content: t.required.toLocaleString(), styles: { halign: "right" as const } },
+        `Floor ${f}${f === 0 ? " (6+7 merged)" : ""}`,
+        { content: `${t.occupied}/${t.occupied + t.vacant}`, styles: { halign: "center" as const } },
+        R(t.monthCharges), R(t.arrears), R(t.totalDue),
         { content: t.paid.toLocaleString(), styles: { halign: "right" as const, textColor: GREEN } },
-        balCell(t.required, t.paid),
+        balCell(t.balance, t.paid),
         { content: `${t.rate}%`, styles: { halign: "center" as const, fontStyle: "bold" as const, textColor: t.rate >= 80 ? GREEN : RED } },
-        { content: t.defaulters ? String(t.defaulters) : "—", styles: { halign: "center" as const, textColor: t.defaulters ? RED : GREEN } },
       ];
     }),
-    foot: [[
-      "GRAND TOTAL", "34",
-      { content: gt.required.toLocaleString(), styles: { halign: "right" as const } },
-      { content: gt.paid.toLocaleString(), styles: { halign: "right" as const } },
-      { content: gt.balance.toLocaleString(), styles: { halign: "right" as const } },
-      { content: `${gt.rate}%`, styles: { halign: "center" as const } },
-      { content: String(gt.defaulters || "—"), styles: { halign: "center" as const } },
-    ]],
-    footStyles: { fillColor: GOLD, textColor: [10, 15, 26], fontStyle: "bold", fontSize: 8.5 },
+    foot: [["GRAND TOTAL", `${gt.occupied}/34`, R(gt.monthCharges), R(gt.arrears), R(gt.totalDue), R(gt.paid), R(gt.balance), `${gt.rate}%`]],
+    footStyles: { fillColor: GOLD, textColor: [10, 15, 26], fontStyle: "bold", fontSize: 8 },
     ...tableTheme,
   });
 
-  const defaulters = data.filter((r) => r.paid < r.rent);
-  if (defaulters.length > 0 && defaulters.length < 34) {
+  const defaulters = data.filter((r) => monthDue(r) + (arrMap[`${r.floor}|${r.unit}`] ?? 0) - r.paid > 0);
+  if (defaulters.length > 0) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(...RED);
-    doc.text("Outstanding units", 12, doc.lastAutoTable.finalY + 10);
+    doc.text(`Outstanding units (${defaulters.length})`, 12, doc.lastAutoTable.finalY + 10);
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 13,
-      head: [["Floor · Unit", "Tenant", "Rent", "Paid", "Balance"]],
-      body: defaulters.map((r) => [
-        `Floor ${r.floor} · ${r.unit}`,
-        r.tenant || "—",
-        { content: r.rent.toLocaleString(), styles: { halign: "right" as const } },
-        { content: r.paid.toLocaleString(), styles: { halign: "right" as const } },
-        balCell(r.rent, r.paid),
-      ]),
+      head: [["Floor · Unit", "Tenant", "Phone", "Total due", "Paid", "Balance"]],
+      body: defaulters.map((r) => {
+        const due = monthDue(r) + (arrMap[`${r.floor}|${r.unit}`] ?? 0);
+        return [
+          `Floor ${r.floor} · ${r.unit}`, r.tenant || "—", r.phone || "—",
+          R(due), R(r.paid), balCell(due - r.paid, r.paid),
+        ];
+      }),
       ...tableTheme,
       headStyles: { ...tableTheme.headStyles, fillColor: RED },
     });
@@ -176,45 +175,45 @@ export function downloadMonthPdf(mi: number) {
 
   signatureBlock(doc, doc.lastAutoTable.finalY + 6);
   footer(doc);
-  doc.save(`Menetekel_Report_${MONTHS[mi]}_${PROPERTY.year}.pdf`);
+  doc.save(`Menetekel_Report_${MONTHS[mi]}_${year}.pdf`);
 }
 
+/* ---------------- floor report ---------------- */
+
 export function downloadFloorPdf(mi: number, floor: number) {
-  const all = loadMonth(mi);
-  const data = all.filter((r) => r.floor === floor);
-  const t = floorTotals(all, floor);
-  const doc = new jsPDF() as Doc;
+  const year = getActiveYear();
+  const data = loadMonth(mi, year).filter((r) => r.floor === floor);
+  const arrMap = arrearsMapFor(mi, year);
+  const t = floorTotalsFull(mi, floor, year);
+  const doc = new jsPDF({ orientation: "landscape" }) as Doc;
 
   header(doc, `${PROPERTY.name} — Floor ${floor} Report`,
-    `${MONTHS[mi]} ${PROPERTY.year} · ${data.length} units${floor === 0 ? " · Unit 6+7 merged" : ""} · ${PROPERTY.paymentMode}`);
+    `${MONTHS[mi]} ${year} · ${data.length} units${floor === 0 ? " · Unit 6+7 merged" : ""} · ${PROPERTY.paymentMode}`);
 
   const y = kpiBoxes(doc, 38, [
-    { label: "Required", value: fmt(t.required) },
+    { label: "Charges", value: fmt(t.monthCharges) },
+    { label: "Arrears b/f", value: fmt(t.arrears), color: t.arrears > 0 ? RED : GREEN },
+    { label: "Total due", value: fmt(t.totalDue) },
     { label: "Collected", value: fmt(t.paid), color: GREEN },
-    { label: "Balance", value: fmt(t.balance), color: t.balance > 0 ? RED : GREEN },
-    { label: "Fully paid", value: `${t.fullyPaid}/${data.length}`, color: NAVY },
+    { label: "Clear", value: `${t.fullyPaid}/${data.length}`, color: NAVY },
   ]);
 
   autoTable(doc, {
     startY: y,
-    head: [["Unit", "Tenant name", "Rent", "Paid", "Balance", "Date", "Receipt no."]],
-    body: data.map((r) => [
-      { content: r.unit + (r.merged ? " ★" : ""), styles: r.merged ? { fontStyle: "bold" as const, textColor: [154, 120, 38] as [number, number, number] } : {} },
-      r.tenant || "—",
-      { content: r.rent.toLocaleString(), styles: { halign: "right" as const } },
-      { content: r.paid.toLocaleString(), styles: { halign: "right" as const } },
-      balCell(r.rent, r.paid),
-      r.date,
-      r.receipt || "—",
-    ]),
-    foot: [[
-      "TOTAL", "",
-      { content: t.required.toLocaleString(), styles: { halign: "right" as const } },
-      { content: t.paid.toLocaleString(), styles: { halign: "right" as const } },
-      { content: t.balance.toLocaleString(), styles: { halign: "right" as const } },
-      `${t.rate}%`, "",
-    ]],
-    footStyles: { fillColor: GOLD, textColor: [10, 15, 26], fontStyle: "bold", fontSize: 8.5 },
+    head: [["Unit", "Tenant", "Phone", "Rent", "Water", "Arrears", "Total due", "Paid", "Balance", "Receipt no."]],
+    body: data.map((r) => {
+      const a = arrMap[`${r.floor}|${r.unit}`] ?? 0;
+      const due = monthDue(r) + a;
+      return [
+        { content: r.unit + (r.merged ? " ★" : "") + (r.vacant ? " (vacant)" : ""), styles: r.merged ? { fontStyle: "bold" as const, textColor: [154, 120, 38] as [number, number, number] } : {} },
+        r.tenant || "—", r.phone || "—",
+        R(r.vacant ? 0 : r.rent), R(r.water), R(a), R(due), R(r.paid),
+        balCell(due - r.paid, r.paid),
+        r.receipt || "—",
+      ];
+    }),
+    foot: [["TOTAL", "", "", R(t.monthCharges), "", R(t.arrears), R(t.totalDue), R(t.paid), R(t.balance), `${t.rate}%`]],
+    footStyles: { fillColor: GOLD, textColor: [10, 15, 26], fontStyle: "bold", fontSize: 8 },
     ...tableTheme,
   });
 
@@ -227,21 +226,24 @@ export function downloadFloorPdf(mi: number, floor: number) {
 
   signatureBlock(doc, doc.lastAutoTable.finalY + 10);
   footer(doc);
-  doc.save(`Menetekel_Floor${floor}_${MONTHS[mi]}_${PROPERTY.year}.pdf`);
+  doc.save(`Menetekel_Floor${floor}_${MONTHS[mi]}_${year}.pdf`);
 }
 
+/* ---------------- unit statement ---------------- */
+
 export function downloadUnitPdf(floor: number, unitLabel: string) {
+  const year = getActiveYear();
   const unitDef = unitsForFloor(floor).find((u) => u.label === unitLabel);
   let tenant = "";
-  const rows: { month: string; e: Entry | undefined }[] = MONTHS.map((m, mi) => {
-    const e = loadMonth(mi).find((r) => r.floor === floor && r.unit === unitLabel);
+  const rows = MONTHS.map((m, mi) => {
+    const e = loadMonth(mi, year).find((r) => r.floor === floor && r.unit === unitLabel);
     if (e?.tenant) tenant = e.tenant;
-    return { month: m, e };
+    return { m, e };
   });
 
   const doc = new jsPDF() as Doc;
   header(doc, `${PROPERTY.name} — Unit Statement`,
-    `Floor ${floor} · ${unitLabel}${unitDef?.merged ? " (merged unit)" : ""} · ${PROPERTY.year} · ${PROPERTY.paymentMode}`);
+    `Floor ${floor} · ${unitLabel}${unitDef?.merged ? " (merged unit)" : ""} · ${year} · ${PROPERTY.paymentMode}`);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -250,37 +252,110 @@ export function downloadUnitPdf(floor: number, unitLabel: string) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...GREY);
-  doc.text(`Monthly rent: ${fmt(unitDef?.rent ?? 0)}   ·   Due: ${PROPERTY.dueDay}th of every month`, 12, 46);
+  doc.text(`Base rent: ${fmt(unitDef?.rent ?? 0)} / month · Due: ${PROPERTY.dueDay}th of every month`, 12, 46);
 
-  let tReq = 0, tPaid = 0;
+  let cumulative = 0, tDue = 0, tPaid = 0;
   autoTable(doc, {
     startY: 52,
-    head: [["Month", "Rent", "Paid", "Balance", "Date", "Receipt no."]],
-    body: rows.map(({ month, e }) => {
-      const rent = e?.rent ?? unitDef?.rent ?? 0;
+    head: [["Month", "Rent", "Water", "Month due", "Paid", "Month balance", "Running balance", "Receipt"]],
+    body: rows.map(({ m, e }) => {
+      const rent = e ? (e.vacant ? 0 : e.rent) : 0;
+      const water = e?.water ?? 0;
+      const due = rent + water;
       const paid = e?.paid ?? 0;
-      tReq += rent; tPaid += paid;
+      cumulative += due - paid;
+      tDue += due; tPaid += paid;
       return [
-        month,
-        { content: rent.toLocaleString(), styles: { halign: "right" as const } },
-        { content: paid.toLocaleString(), styles: { halign: "right" as const } },
-        balCell(rent, paid),
-        e?.date ?? "—",
+        m + (e?.vacant ? " (vacant)" : ""),
+        R(rent), R(water), R(due), R(paid),
+        balCell(due - paid, paid),
+        balCell(cumulative, paid),
         e?.receipt ?? "—",
       ];
     }),
-    foot: [[
-      "YEAR TOTAL",
-      { content: tReq.toLocaleString(), styles: { halign: "right" as const } },
-      { content: tPaid.toLocaleString(), styles: { halign: "right" as const } },
-      { content: (tReq - tPaid).toLocaleString(), styles: { halign: "right" as const } },
-      "", "",
-    ]],
-    footStyles: { fillColor: GOLD, textColor: [10, 15, 26], fontStyle: "bold", fontSize: 8.5 },
+    foot: [["YEAR TOTAL", "", "", R(tDue), R(tPaid), R(tDue - tPaid), R(cumulative), ""]],
+    footStyles: { fillColor: GOLD, textColor: [10, 15, 26], fontStyle: "bold", fontSize: 8 },
     ...tableTheme,
   });
 
   signatureBlock(doc, doc.lastAutoTable.finalY + 8);
   footer(doc);
-  doc.save(`Menetekel_F${floor}_${unitLabel.replace(/\W+/g, "")}_Statement_${PROPERTY.year}.pdf`);
+  doc.save(`Menetekel_F${floor}_${unitLabel.replace(/\W+/g, "")}_Statement_${year}.pdf`);
+}
+
+/* ---------------- A5 tenant receipt ---------------- */
+
+export function downloadReceiptPdf(mi: number, e: Entry, arrears: number) {
+  const year = getActiveYear();
+  const due = monthDue(e) + arrears;
+  const bal = due - e.paid;
+  const doc = new jsPDF({ format: "a5", orientation: "landscape" });
+  const w = doc.internal.pageSize.getWidth();
+
+  doc.setFillColor(...NAVY);
+  doc.rect(0, 0, w, 24, "F");
+  doc.setFillColor(...GOLD);
+  doc.rect(0, 24, w, 1.4, "F");
+  doc.roundedRect(10, 6, 12, 12, 2, 2, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...NAVY);
+  doc.text("M", 16, 14.2, { align: "center" });
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.text("RENT RECEIPT", 27, 12);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...GOLD);
+  doc.text(`${PROPERTY.name} · ${PROPERTY.location}`, 27, 18);
+
+  doc.setFontSize(9);
+  doc.setTextColor(...GREY);
+  doc.text(`Receipt no: ${e.receipt || "________"}`, w - 10, 10, { align: "right" });
+  doc.text(`Date: ${e.date}`, w - 10, 16, { align: "right" });
+
+  doc.setTextColor(30, 35, 45);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(`${MONTHS[mi]} ${year}  ·  Floor ${e.floor}, ${e.unit}${e.merged ? " (merged)" : ""}`, 10, 34);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text(`Tenant: ${e.tenant || "—"}${e.phone ? "   ·   " + e.phone : ""}`, 10, 41);
+  doc.text(`Payment mode: ${PROPERTY.paymentMode}`, 10, 47);
+
+  autoTable(doc, {
+    startY: 53,
+    margin: { left: 10, right: 10 },
+    head: [["Description", "Amount (KShs)"]],
+    body: [
+      ["Monthly rent", R(e.vacant ? 0 : e.rent)],
+      ["Water & other charges", R(e.water)],
+      ["Balance brought forward", R(arrears)],
+      [{ content: "Total due", styles: { fontStyle: "bold" as const } }, { ...R(due), styles: { fontStyle: "bold" as const, halign: "right" as const } }],
+      [{ content: "Amount paid", styles: { fontStyle: "bold" as const, textColor: GREEN } }, { ...R(e.paid), styles: { fontStyle: "bold" as const, halign: "right" as const, textColor: GREEN } }],
+    ],
+    foot: [[
+      bal > 0 ? "BALANCE REMAINING" : bal < 0 ? "CREDIT CARRIED FORWARD" : "FULLY SETTLED",
+      { content: Math.abs(bal).toLocaleString(), styles: { halign: "right" as const } },
+    ]],
+    footStyles: {
+      fillColor: bal > 0 ? RED : GREEN,
+      textColor: [255, 255, 255], fontStyle: "bold", fontSize: 9,
+    },
+    headStyles: { ...tableTheme.headStyles, fontSize: 8 },
+    bodyStyles: { fontSize: 9 },
+    styles: tableTheme.styles,
+  });
+
+  const yEnd = (doc as Doc).lastAutoTable.finalY;
+  doc.setDrawColor(120, 128, 140);
+  doc.setLineWidth(0.3);
+  doc.line(10, yEnd + 14, 75, yEnd + 14);
+  doc.line(w - 75, yEnd + 14, w - 10, yEnd + 14);
+  doc.setFontSize(7.5);
+  doc.setTextColor(...GREY);
+  doc.text(`Received by: ${PROPERTY.manager}`, 10, yEnd + 19);
+  doc.text("Tenant signature", w - 75, yEnd + 19);
+
+  doc.save(`Receipt_${MONTHS[mi]}_F${e.floor}_${e.unit.replace(/\W+/g, "")}.pdf`);
 }
