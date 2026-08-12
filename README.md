@@ -74,3 +74,36 @@ in the browser).
    account first** (it becomes owner), confirm via the email link, sign in.
 7. Settings → Team → "Upload this device's local records to the cloud" to
    migrate existing data.
+
+## M-Pesa STK Push (v6)
+
+The 📲 button on each unit sends a real M-Pesa payment prompt to the tenant's
+phone; on success the payment is written to the shared records automatically
+with the M-Pesa receipt number.
+
+### Environment variables (Vercel → Settings → Environment Variables)
+
+| Key | Sandbox value | Production value |
+|---|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role/secret key from Supabase → Settings → API Keys | same |
+| `MPESA_ENV` | `sandbox` | `production` |
+| `MPESA_CONSUMER_KEY` | from your Daraja app | from your production Daraja app |
+| `MPESA_CONSUMER_SECRET` | from your Daraja app | from your production Daraja app |
+| `MPESA_SHORTCODE` | `174379` | your store/Till shortcode |
+| `MPESA_PASSKEY` | sandbox Lipa Na M-Pesa passkey (shown on the Daraja test-credentials page) | issued at Go-Live |
+| `MPESA_TXN_TYPE` | `CustomerPayBillOnline` | `CustomerBuyGoodsOnline` (Till) |
+| `MPESA_PARTYB` | `174379` | your Till number |
+| `MPESA_CALLBACK_BASE` | `https://<your-app>.vercel.app` | same |
+| `MPESA_CALLBACK_SECRET` | any long random string | same |
+
+### Sandbox test
+1. developer.safaricom.co.ke → sign up → My Apps → Add App (tick Lipa Na M-Pesa
+   Sandbox) → copy Consumer Key/Secret.
+2. Run `supabase-mpesa.sql` in Supabase SQL Editor.
+3. Add the env vars above, redeploy.
+4. In the app, set a unit's phone to the sandbox test number `254708374149`,
+   press 📲 — the sandbox auto-completes and the row records the payment.
+
+### Go live
+Get a Business Till (m-pesaforbusiness.co.ke), create a production Daraja app,
+complete Daraja "Go Live", then swap the production values above and redeploy.

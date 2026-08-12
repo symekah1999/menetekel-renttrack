@@ -9,6 +9,8 @@ import {
 } from "@/lib/store";
 import { downloadReceiptPdf } from "@/lib/exportPdf";
 import { parseMpesaCsv, autoMatch, MpesaTxn } from "@/lib/mpesa";
+import { getSupabase, cloudConfigured } from "@/lib/supabase";
+import { pullYears } from "@/lib/cloud";
 import AuthGuard from "@/components/AuthGuard";
 
 function CollectPageInner() {
@@ -25,6 +27,74 @@ function CollectPageInner() {
   const [txns, setTxns] = useState<MpesaTxn[]>([]);
   const [assign, setAssign] = useState<number[]>([]);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+
+  // STK push state
+  const [stk, setStk] = useState<{ unit: string; phase: "sending" | "waiting" | "done" | "failed"; msg: string } | null>(null);
+
+  async function requestPayment(r: Entry, bal: number) {
+    if (!cloudConfigured()) {
+      alert("Cloud accounts must be set up for M-Pesa prompts.");
+      return;
+    }
+    if (!r.phone.trim()) {
+      alert(`Enter ${r.unit}'s phone number first (Phone column).`);
+      return;
+    }
+    const suggested = bal > 0 ? bal : monthDue(r);
+    const raw = window.prompt(
+      `Send an M-Pesa payment prompt to ${r.tenant || r.unit} (${r.phone}).\n\nAmount (KShs):`,
+      String(suggested)
+    );
+    if (raw === null) return;
+    const amount = Math.round(+raw);
+    if (!Number.isFinite(amount) || amount < 1) { alert("Enter a valid amount."); return; }
+
+    const sb = getSupabase();
+    const { data: sess } = await sb!.auth.getSession();
+    const token = sess.session?.access_token;
+    if (!token) { alert("Sign in first."); return; }
+
+    setStk({ unit: r.unit, phase: "sending", msg: `Sending prompt to ${r.phone}…` });
+    try {
+      const res = await fetch("/api/mpesa/stk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ year, month, floor: r.floor, unit: r.unit, phone: r.phone, amount }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Request failed.");
+
+      setStk({ unit: r.unit, phase: "waiting", msg: `Prompt sent — waiting for ${r.tenant || "the tenant"} to enter their M-Pesa PIN…` });
+
+      const checkoutId = json.checkoutId as string;
+      const deadline = Date.now() + 120_000;
+      while (Date.now() < deadline) {
+        await new Promise((ok) => setTimeout(ok, 4000));
+        const sres = await fetch(`/api/mpesa/status?id=${encodeURIComponent(checkoutId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!sres.ok) continue;
+        const s = await sres.json();
+        if (s.status === "success") {
+          await pullYears([year]);
+          setRows(loadMonth(month));
+          setStk({ unit: r.unit, phase: "done", msg: `Payment received — KShs ${amount.toLocaleString()} from ${r.unit} (receipt ${s.receipt}).` });
+          return;
+        }
+        if (s.status === "success_unrecorded") {
+          setStk({ unit: r.unit, phase: "done", msg: `Payment received (receipt ${s.receipt}) — type it into ${r.unit}'s Paid box to record it.` });
+          return;
+        }
+        if (s.status === "failed") {
+          setStk({ unit: r.unit, phase: "failed", msg: `Not completed: ${s.result_desc || "declined or cancelled"}. You can resend.` });
+          return;
+        }
+      }
+      setStk({ unit: r.unit, phase: "failed", msg: "No confirmation after 2 minutes — the prompt may have expired. Resend, or check your M-Pesa messages." });
+    } catch (e) {
+      setStk({ unit: r.unit, phase: "failed", msg: e instanceof Error ? e.message : "Request failed." });
+    }
+  }
 
   useEffect(() => {
     const y = getActiveYear();
@@ -149,6 +219,19 @@ function CollectPageInner() {
         </div>
       )}
 
+      {stk && (
+        <div className="info-banner" style={{
+          borderColor: stk.phase === "done" ? "rgba(74,222,128,0.4)" : stk.phase === "failed" ? "rgba(248,113,113,0.4)" : "var(--line-gold)",
+          background: stk.phase === "done" ? "rgba(74,222,128,0.07)" : stk.phase === "failed" ? "rgba(248,113,113,0.07)" : "rgba(200,169,81,0.06)",
+        }}>
+          <span>
+            {stk.phase === "sending" || stk.phase === "waiting" ? "📲 " : stk.phase === "done" ? "✅ " : "⚠ "}
+            {stk.msg}
+          </span>
+          <button onClick={() => setStk(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--txt-3)", fontSize: 14 }}>✕</button>
+        </div>
+      )}
+
       <div className="tbl-wrap">
         <table className="data" style={{ minWidth: 1020 }}>
           <thead>
@@ -221,6 +304,12 @@ function CollectPageInner() {
                       style={{ accentColor: "var(--gold)", width: 15, height: 15, cursor: "pointer" }} />
                   </td>
                   <td style={{ textAlign: "center", whiteSpace: "nowrap" }}>
+                    <button title="Send M-Pesa payment prompt (STK push)" className="btn-outline"
+                      style={{ padding: "4px 8px", fontSize: 11, marginRight: 4 }}
+                      disabled={r.vacant || (stk !== null && (stk.phase === "sending" || stk.phase === "waiting"))}
+                      onClick={() => requestPayment(r, bal)}>
+                      📲
+                    </button>
                     <button title="Download receipt (PDF)" className="btn-outline"
                       style={{ padding: "4px 8px", fontSize: 11, marginRight: 4 }}
                       disabled={r.paid <= 0}

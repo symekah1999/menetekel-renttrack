@@ -1,4 +1,4 @@
-const CACHE = "menetekel-v5";
+const CACHE = "menetekel-v6";
 const PRECACHE = ["/", "/collect", "/reports", "/settings", "/login"];
 
 self.addEventListener("install", (event) => {
@@ -23,6 +23,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/")) return; // never cache API calls
 
   // Network-first for page navigations (fresh app after deploys, cached when offline)
   if (request.mode === "navigate") {
