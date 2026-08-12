@@ -14,12 +14,12 @@ export interface MpesaConfig {
 }
 
 export function getMpesaConfig(): MpesaConfig | null {
-  const consumerKey = process.env.MPESA_CONSUMER_KEY;
-  const consumerSecret = process.env.MPESA_CONSUMER_SECRET;
-  const shortcode = process.env.MPESA_SHORTCODE;
-  const passkey = process.env.MPESA_PASSKEY;
-  const callbackBase = process.env.MPESA_CALLBACK_BASE;
-  const callbackSecret = process.env.MPESA_CALLBACK_SECRET;
+  const consumerKey = process.env.MPESA_CONSUMER_KEY?.trim();
+  const consumerSecret = process.env.MPESA_CONSUMER_SECRET?.trim();
+  const shortcode = process.env.MPESA_SHORTCODE?.trim();
+  const passkey = process.env.MPESA_PASSKEY?.trim();
+  const callbackBase = process.env.MPESA_CALLBACK_BASE?.trim();
+  const callbackSecret = process.env.MPESA_CALLBACK_SECRET?.trim();
   if (!consumerKey || !consumerSecret || !shortcode || !passkey || !callbackBase || !callbackSecret) {
     return null;
   }
@@ -42,9 +42,17 @@ export async function getToken(cfg: MpesaConfig): Promise<string> {
     headers: { Authorization: `Basic ${basic}` },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`Daraja auth failed (${res.status})`);
-  const json = (await res.json()) as { access_token?: string };
-  if (!json.access_token) throw new Error("Daraja auth: no token returned");
+  const raw = await res.text();
+  if (!res.ok) {
+    throw new Error(`Daraja auth failed (${res.status}): ${raw.slice(0, 300)}`);
+  }
+  let json: { access_token?: string };
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    throw new Error(`Daraja auth: unexpected response: ${raw.slice(0, 300)}`);
+  }
+  if (!json.access_token) throw new Error(`Daraja auth: no token returned: ${raw.slice(0, 300)}`);
   return json.access_token;
 }
 
