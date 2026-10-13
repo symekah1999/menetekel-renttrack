@@ -598,3 +598,15 @@ footer.site { max-width: 1120px; margin: 0 auto; padding: 24px 20px 32px; color:
 @keyframes twinkle { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.25; } }
 @media (max-width: 900px) { .auth-art .scene { max-width: 300px; margin-top: 8px; } }
 @media (prefers-reduced-motion: reduce) { .auth-art .win-g, .auth-art .star { animation: none; } }
+
+/* ---------- sign-in wordmark ---------- */
+.auth-brand { display: flex; align-items: center; gap: 16px; }
+.auth-brand-mark { width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, #7a5fd0, #4cc79a); box-shadow: 0 8px 24px -8px rgba(76, 199, 154, 0.55); }
+.auth-wordmark {
+  display: block; font-family: var(--font-display); font-weight: 800; line-height: 1;
+  font-size: clamp(34px, 4.4vw, 52px); letter-spacing: -1.5px; font-variation-settings: "wdth" 90;
+  background: linear-gradient(90deg, #ffffff 30%, #b9f0d9 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.auth-tag { display: block; margin-top: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: rgba(255, 255, 255, 0.62); }
+.auth-art .scene { margin-top: 0; align-self: center; }
+@media (max-width: 900px) { .auth-brand-mark { width: 42px; height: 42px; } .auth-wordmark { font-size: 32px; } }

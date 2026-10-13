@@ -97,14 +97,14 @@ export default function LoginPage() {
   return (
     <div className="auth">
       <section className="auth-art" aria-hidden>
-        <div className="row gap-12">
-          <span className="brand-mark" style={{ background: "rgba(255,255,255,0.14)" }}><IconBuilding width={20} height={20} /></span>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 19 }}>Menetekel</span>
+        <div className="auth-brand">
+          <span className="brand-mark auth-brand-mark"><IconBuilding width={26} height={26} /></span>
+          <div>
+            <span className="auth-wordmark">Menetekel</span>
+            <span className="auth-tag">Apartments</span>
+          </div>
         </div>
-        <div>
-          <h2>Know who has paid, floor by floor.</h2>
-          <BuildingScene />
-        </div>
+        <BuildingScene />
         <span style={{ opacity: 0.7, fontSize: 14 }}>Menetekel Apartments, Nairobi</span>
       </section>
 
