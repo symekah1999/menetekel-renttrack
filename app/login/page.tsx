@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase, cloudConfigured } from "@/lib/supabase";
 import { IconBuilding, IconCheck, IconAlert } from "@/components/Icons";
+import BuildingScene from "@/components/BuildingScene";
 
 type Mode = "signin" | "signup" | "forgot" | "recovery";
 
@@ -102,11 +103,7 @@ export default function LoginPage() {
         </div>
         <div>
           <h2>Know who has paid, floor by floor.</h2>
-          <div className="mini" style={{ marginTop: 28 }}>
-            {"p p p h p p o p p p p p h p p o p p p p p p p h p p p p p p p p p p o".split(" ").map((c, i) => (
-              <i key={i} className={c} />
-            ))}
-          </div>
+          <BuildingScene />
         </div>
         <span style={{ opacity: 0.7, fontSize: 14 }}>Menetekel Apartments, Nairobi</span>
       </section>

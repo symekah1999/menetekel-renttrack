@@ -589,3 +589,12 @@ footer.site { max-width: 1120px; margin: 0 auto; padding: 24px 20px 32px; color:
   .bar span, .bar b { font-size: 10px; letter-spacing: -0.3px; white-space: nowrap; }
   .kpi dd { font-size: 18px; }
 }
+
+/* ---------- sign-in illustration ---------- */
+.auth-art .scene { display: block; width: 100%; max-width: 440px; height: auto; margin-top: 20px; }
+.auth-art .win-g { animation: win-on 0.9s ease-out both; }
+.auth-art .star { animation: twinkle 3.6s ease-in-out infinite; }
+@keyframes win-on { from { opacity: 0; } }
+@keyframes twinkle { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.25; } }
+@media (max-width: 900px) { .auth-art .scene { max-width: 300px; margin-top: 8px; } }
+@media (prefers-reduced-motion: reduce) { .auth-art .win-g, .auth-art .star { animation: none; } }
