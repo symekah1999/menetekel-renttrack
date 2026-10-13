@@ -3,20 +3,20 @@
 import ExcelJS from "exceljs";
 import { MONTHS, PROPERTY, FLOORS, unitsForFloor } from "./config";
 import {
-  loadMonth, monthTotalsFull, floorTotalsFull, arrearsMapFor,
+  loadMonthEffective as loadMonth, monthTotalsFull, floorTotalsFull, hasMonthData,
   monthDue, getActiveYear, Entry,
 } from "./store";
 
-const NAVY = "FF0F2C52";
-const NAVY_LIGHT = "FF1B3A66";
-const GOLD = "FFC8A951";
-const GOLD_LIGHT = "FFF5EAD0";
-const GREEN = "FF2E7D4F";
-const RED = "FFC0392B";
+const NAVY = "FF3E2A7E";
+const NAVY_LIGHT = "FF54399C";
+const GOLD = "FFE0A526";
+const GOLD_LIGHT = "FFFBEFD0";
+const GREEN = "FF17805A";
+const RED = "FFBF3B3B";
 const WHITE = "FFFFFFFF";
 const GREY_ROW = "FFF4F6FA";
 const VACANT_ROW = "FFE8EAEE";
-const KSH = '"KShs" #,##0';
+const KSH = '"KSh" #,##0';
 
 function thinBorder(): Partial<ExcelJS.Borders> {
   const s: Partial<ExcelJS.Border> = { style: "thin", color: { argb: "FFD8DEE9" } };
@@ -114,23 +114,22 @@ function newWb(): ExcelJS.Workbook {
 
 const UNIT_COLS = [
   { width: 10 }, { width: 11 }, { width: 20 }, { width: 13 }, { width: 11 },
-  { width: 11 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 13 },
+  { width: 11 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 18 },
 ];
-const UNIT_HEAD = ["Floor", "Unit", "Tenant", "Phone", "Rent", "Water", "Arrears", "Total due", "Paid", "Balance", "Receipt no."];
+const UNIT_HEAD = ["Floor", "Unit", "Tenant", "Phone", "Rent", "Water", "Total due", "Paid", "Balance", "Receipt no."];
 
-function unitRowCells(r: Entry, arrears: number): (string | number)[] {
-  const due = monthDue(r) + arrears;
+function unitRowCells(r: Entry): (string | number)[] {
+  const due = monthDue(r);
   return [
     `Floor ${r.floor}`,
     r.unit + (r.vacant ? " (vacant)" : ""),
     r.tenant, r.phone,
-    r.vacant ? 0 : r.rent, r.water, arrears, due, r.paid, due - r.paid, r.receipt,
+    r.vacant ? 0 : r.rent, r.water, due, r.paid, due - r.paid, r.receipt,
   ];
 }
 
 function buildMonthSheet(wb: ExcelJS.Workbook, mi: number, year: number) {
   const data = loadMonth(mi, year);
-  const arrMap = arrearsMapFor(mi, year);
   const ws = wb.addWorksheet(MONTHS[mi].slice(0, 3), {
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 },
   });
@@ -146,25 +145,24 @@ function buildMonthSheet(wb: ExcelJS.Workbook, mi: number, year: number) {
   for (const f of FLOORS) {
     const rowsF = data.filter((r) => r.floor === f);
     rowsF.forEach((r, i) => {
-      const a = arrMap[`${r.floor}|${r.unit}`] ?? 0;
-      const row = ws.addRow(unitRowCells(r, a));
+      const row = ws.addRow(unitRowCells(r));
       styleDataRow(row, { zebra: i % 2 === 1, merged: r.merged, vacant: r.vacant });
-      moneyCols(row, [5, 6, 7, 8, 9, 10]);
-      balanceColor(row, 10, monthDue(r) + a - r.paid, r.paid);
+      moneyCols(row, [5, 6, 7, 8, 9]);
+      balanceColor(row, 9, monthDue(r) - r.paid, r.paid);
     });
     const ft = floorTotalsFull(mi, f, year);
-    const tr = totalRow(ws, [`Floor ${f} total`, "", "", "", "", ft.monthCharges, ft.arrears, ft.totalDue, ft.paid, ft.balance, `${ft.rate}%`], NAVY);
-    moneyCols(tr, [6, 7, 8, 9, 10]);
+    const tr = totalRow(ws, [`Floor ${f} total`, "", "", "", "", "", ft.totalDue, ft.paid, ft.balance, `${ft.rate}%`], NAVY);
+    moneyCols(tr, [7, 8, 9]);
   }
 
   const gt = monthTotalsFull(mi, year);
   ws.addRow([]);
   const gr = totalRow(
     ws,
-    ["GRAND TOTAL", "", "", "", "", gt.monthCharges, gt.arrears, gt.totalDue, gt.paid, gt.balance, `${gt.fullyPaid}/34 clear`],
-    GOLD, "FF0A0F1A"
+    ["GRAND TOTAL", "", "", "", "", "", gt.totalDue, gt.paid, gt.balance, `${gt.fullyPaid}/34 clear`],
+    GOLD, "FF1E1A33"
   );
-  moneyCols(gr, [6, 7, 8, 9, 10]);
+  moneyCols(gr, [7, 8, 9]);
   gr.height = 22;
   ws.views = [{ state: "frozen", ySplit: 4 }];
 }
@@ -178,22 +176,27 @@ export async function downloadYearExcel() {
     { width: 14 }, { width: 15 }, { width: 14 }, { width: 15 }, { width: 15 }, { width: 9 }, { width: 12 },
   ];
   titleBand(sum, `${PROPERTY.name} — ${year} Year Summary`, `${PROPERTY.location} · 5 floors · 34 units · Manager: ${PROPERTY.manager}`, 7);
-  headerRow(sum, ["Month", "Charges (rent+water)", "Arrears b/f", "Total due", "Collected", "Rate", "Units clear"]);
-  let yCharges = 0, yPaid = 0;
+  headerRow(sum, ["Month", "Charges (rent+water)", "Collected", "Outstanding", "Rate", "Units clear", "Outstanding to date"]);
+  let yCharges = 0, yPaid = 0, running = 0;
   MONTHS.forEach((m, mi) => {
+    const opened = hasMonthData(mi, year);
     const t = monthTotalsFull(mi, year);
-    yCharges += t.monthCharges; yPaid += t.paid;
-    const row = sum.addRow([m, t.monthCharges, t.arrears, t.totalDue, t.paid, `${t.rate}%`, `${t.fullyPaid}/34`]);
+    if (opened) { yCharges += t.monthCharges; yPaid += t.paid; running += t.balance; }
+    const row = sum.addRow(
+      opened
+        ? [m, t.monthCharges, t.paid, t.balance, `${t.rate}%`, `${t.fullyPaid}/34`, running]
+        : [m, "", "", "", "not started", "", ""]
+    );
     styleDataRow(row, { zebra: mi % 2 === 1 });
-    moneyCols(row, [2, 3, 4, 5]);
-    balanceColor(row, 5, t.totalDue - t.paid, t.paid);
+    moneyCols(row, [2, 3, 4, 7]);
+    if (opened) balanceColor(row, 4, t.balance, t.paid);
   });
   const yr = totalRow(
     sum,
-    ["YEAR TOTAL", yCharges, "", "", yPaid, yCharges > 0 ? `${Math.round((yPaid / yCharges) * 100)}%` : "—", ""],
-    GOLD, "FF0A0F1A"
+    ["YEAR TO DATE", yCharges, yPaid, yCharges - yPaid, yCharges > 0 ? `${Math.round((yPaid / yCharges) * 100)}%` : "—", "", running],
+    GOLD, "FF1E1A33"
   );
-  moneyCols(yr, [2, 5]);
+  moneyCols(yr, [2, 3, 4, 7]);
 
   MONTHS.forEach((_, mi) => buildMonthSheet(wb, mi, year));
   await saveWb(wb, `Menetekel_Rent_${year}.xlsx`);
@@ -203,7 +206,6 @@ export async function downloadFloorExcel(mi: number, floor: number) {
   const year = getActiveYear();
   const wb = newWb();
   const data = loadMonth(mi, year).filter((r) => r.floor === floor);
-  const arrMap = arrearsMapFor(mi, year);
   const ws = wb.addWorksheet(`Floor ${floor}`, {
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 },
   });
@@ -216,15 +218,14 @@ export async function downloadFloorExcel(mi: number, floor: number) {
   );
   headerRow(ws, UNIT_HEAD.slice(1));
   data.forEach((r, i) => {
-    const a = arrMap[`${r.floor}|${r.unit}`] ?? 0;
-    const row = ws.addRow(unitRowCells(r, a).slice(1));
+    const row = ws.addRow(unitRowCells(r).slice(1));
     styleDataRow(row, { zebra: i % 2 === 1, merged: r.merged, vacant: r.vacant });
-    moneyCols(row, [4, 5, 6, 7, 8, 9]);
-    balanceColor(row, 9, monthDue(r) + a - r.paid, r.paid);
+    moneyCols(row, [4, 5, 6, 7, 8]);
+    balanceColor(row, 8, monthDue(r) - r.paid, r.paid);
   });
   const ft = floorTotalsFull(mi, floor, year);
-  const tr = totalRow(ws, [`Floor ${floor} total`, "", "", "", ft.monthCharges, ft.arrears, ft.totalDue, ft.paid, ft.balance, `${ft.rate}%`], GOLD, "FF0A0F1A");
-  moneyCols(tr, [5, 6, 7, 8, 9]);
+  const tr = totalRow(ws, [`Floor ${floor} total`, "", "", "", "", ft.totalDue, ft.paid, ft.balance, `${ft.rate}%`], GOLD, "FF1E1A33");
+  moneyCols(tr, [6, 7, 8]);
   await saveWb(wb, `Menetekel_Floor${floor}_${MONTHS[mi]}_${year}.xlsx`);
 }
 
@@ -266,7 +267,7 @@ export async function downloadUnitExcel(floor: number, unitLabel: string) {
     moneyCols(row, [2, 3, 4, 5, 6, 7]);
     balanceColor(row, 7, cumulative, paid);
   });
-  const tr = totalRow(ws, ["YEAR TOTAL", "", "", tDue, tPaid, tDue - tPaid, cumulative, ""], GOLD, "FF0A0F1A");
+  const tr = totalRow(ws, ["YEAR TOTAL", "", "", tDue, tPaid, tDue - tPaid, cumulative, ""], GOLD, "FF1E1A33");
   moneyCols(tr, [4, 5, 6, 7]);
   await saveWb(wb, `Menetekel_F${floor}_${unitLabel.replace(/\W+/g, "")}_${year}.xlsx`);
 }

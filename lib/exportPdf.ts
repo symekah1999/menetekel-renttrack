@@ -4,14 +4,14 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { MONTHS, PROPERTY, FLOORS, unitsForFloor, fmt } from "./config";
 import {
-  loadMonth, monthTotalsFull, floorTotalsFull, arrearsMapFor,
+  loadMonthEffective as loadMonth, monthTotalsFull, floorTotalsFull,
   monthDue, getActiveYear, Entry,
 } from "./store";
 
-const NAVY: [number, number, number] = [15, 44, 82];
-const GOLD: [number, number, number] = [200, 169, 81];
-const GREEN: [number, number, number] = [46, 125, 79];
-const RED: [number, number, number] = [192, 57, 43];
+const NAVY: [number, number, number] = [62, 42, 126];
+const GOLD: [number, number, number] = [224, 165, 38];
+const GREEN: [number, number, number] = [23, 128, 90];
+const RED: [number, number, number] = [191, 59, 59];
 const GREY: [number, number, number] = [110, 118, 130];
 
 type Doc = jsPDF & { lastAutoTable: { finalY: number } };
@@ -118,7 +118,6 @@ function balCell(bal: number, paid: number) {
 export function downloadMonthPdf(mi: number) {
   const year = getActiveYear();
   const data = loadMonth(mi, year);
-  const arrMap = arrearsMapFor(mi, year);
   const gt = monthTotalsFull(mi, year);
   const doc = new jsPDF() as Doc;
 
@@ -126,33 +125,32 @@ export function downloadMonthPdf(mi: number) {
     `${MONTHS[mi]} ${year} · 5 floors · 34 units · ${PROPERTY.paymentMode} · Due ${PROPERTY.dueDay}th`);
 
   const y = kpiBoxes(doc, 38, [
-    { label: "Charges", value: fmt(gt.monthCharges) },
-    { label: "Arrears b/f", value: fmt(gt.arrears), color: gt.arrears > 0 ? RED : GREEN },
-    { label: "Total due", value: fmt(gt.totalDue) },
+    { label: "Due this month", value: fmt(gt.totalDue) },
     { label: "Collected", value: fmt(gt.paid), color: GREEN },
+    { label: "Outstanding", value: fmt(Math.max(gt.balance, 0)), color: gt.balance > 0 ? RED : GREEN },
     { label: "Rate", value: `${gt.rate}%`, color: gt.rate >= 80 ? GREEN : RED },
   ]);
 
   autoTable(doc, {
     startY: y,
-    head: [["Floor", "Occ.", "Charges", "Arrears", "Total due", "Collected", "Balance", "Rate"]],
+    head: [["Floor", "Occ.", "Due", "Collected", "Balance", "Rate"]],
     body: FLOORS.map((f) => {
       const t = floorTotalsFull(mi, f, year);
       return [
         `Floor ${f}${f === 0 ? " (6+7 merged)" : ""}`,
         { content: `${t.occupied}/${t.occupied + t.vacant}`, styles: { halign: "center" as const } },
-        R(t.monthCharges), R(t.arrears), R(t.totalDue),
+        R(t.totalDue),
         { content: t.paid.toLocaleString(), styles: { halign: "right" as const, textColor: GREEN } },
         balCell(t.balance, t.paid),
         { content: `${t.rate}%`, styles: { halign: "center" as const, fontStyle: "bold" as const, textColor: t.rate >= 80 ? GREEN : RED } },
       ];
     }),
-    foot: [["GRAND TOTAL", `${gt.occupied}/34`, R(gt.monthCharges), R(gt.arrears), R(gt.totalDue), R(gt.paid), R(gt.balance), `${gt.rate}%`]],
+    foot: [["GRAND TOTAL", `${gt.occupied}/34`, R(gt.totalDue), R(gt.paid), R(gt.balance), `${gt.rate}%`]],
     footStyles: { fillColor: GOLD, textColor: [10, 15, 26], fontStyle: "bold", fontSize: 8 },
     ...tableTheme,
   });
 
-  const defaulters = data.filter((r) => monthDue(r) + (arrMap[`${r.floor}|${r.unit}`] ?? 0) - r.paid > 0);
+  const defaulters = data.filter((r) => monthDue(r) - r.paid > 0);
   if (defaulters.length > 0) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
@@ -162,7 +160,7 @@ export function downloadMonthPdf(mi: number) {
       startY: doc.lastAutoTable.finalY + 13,
       head: [["Floor · Unit", "Tenant", "Phone", "Total due", "Paid", "Balance"]],
       body: defaulters.map((r) => {
-        const due = monthDue(r) + (arrMap[`${r.floor}|${r.unit}`] ?? 0);
+        const due = monthDue(r);
         return [
           `Floor ${r.floor} · ${r.unit}`, r.tenant || "—", r.phone || "—",
           R(due), R(r.paid), balCell(due - r.paid, r.paid),
@@ -183,7 +181,6 @@ export function downloadMonthPdf(mi: number) {
 export function downloadFloorPdf(mi: number, floor: number) {
   const year = getActiveYear();
   const data = loadMonth(mi, year).filter((r) => r.floor === floor);
-  const arrMap = arrearsMapFor(mi, year);
   const t = floorTotalsFull(mi, floor, year);
   const doc = new jsPDF({ orientation: "landscape" }) as Doc;
 
@@ -191,28 +188,26 @@ export function downloadFloorPdf(mi: number, floor: number) {
     `${MONTHS[mi]} ${year} · ${data.length} units${floor === 0 ? " · Unit 6+7 merged" : ""} · ${PROPERTY.paymentMode}`);
 
   const y = kpiBoxes(doc, 38, [
-    { label: "Charges", value: fmt(t.monthCharges) },
-    { label: "Arrears b/f", value: fmt(t.arrears), color: t.arrears > 0 ? RED : GREEN },
-    { label: "Total due", value: fmt(t.totalDue) },
+    { label: "Due this month", value: fmt(t.totalDue) },
     { label: "Collected", value: fmt(t.paid), color: GREEN },
+    { label: "Outstanding", value: fmt(Math.max(t.balance, 0)), color: t.balance > 0 ? RED : GREEN },
     { label: "Clear", value: `${t.fullyPaid}/${data.length}`, color: NAVY },
   ]);
 
   autoTable(doc, {
     startY: y,
-    head: [["Unit", "Tenant", "Phone", "Rent", "Water", "Arrears", "Total due", "Paid", "Balance", "Receipt no."]],
+    head: [["Unit", "Tenant", "Phone", "Rent", "Water", "Total due", "Paid", "Balance", "Receipt no."]],
     body: data.map((r) => {
-      const a = arrMap[`${r.floor}|${r.unit}`] ?? 0;
-      const due = monthDue(r) + a;
+      const due = monthDue(r);
       return [
         { content: r.unit + (r.merged ? " ★" : "") + (r.vacant ? " (vacant)" : ""), styles: r.merged ? { fontStyle: "bold" as const, textColor: [154, 120, 38] as [number, number, number] } : {} },
         r.tenant || "—", r.phone || "—",
-        R(r.vacant ? 0 : r.rent), R(r.water), R(a), R(due), R(r.paid),
+        R(r.vacant ? 0 : r.rent), R(r.water), R(due), R(r.paid),
         balCell(due - r.paid, r.paid),
         r.receipt || "—",
       ];
     }),
-    foot: [["TOTAL", "", "", R(t.monthCharges), "", R(t.arrears), R(t.totalDue), R(t.paid), R(t.balance), `${t.rate}%`]],
+    foot: [["TOTAL", "", "", "", "", R(t.totalDue), R(t.paid), R(t.balance), `${t.rate}%`]],
     footStyles: { fillColor: GOLD, textColor: [10, 15, 26], fontStyle: "bold", fontSize: 8 },
     ...tableTheme,
   });
@@ -221,7 +216,7 @@ export function downloadFloorPdf(mi: number, floor: number) {
     doc.setFont("helvetica", "italic");
     doc.setFontSize(7.5);
     doc.setTextColor(...GREY);
-    doc.text("★ Unit 6+7 — merged unit (former Units 6 and 7 combined at KShs 7,500).", 12, doc.lastAutoTable.finalY + 7);
+    doc.text("★ Unit 6+7 — merged unit (former Units 6 and 7 combined at KSh 7,500).", 12, doc.lastAutoTable.finalY + 7);
   }
 
   signatureBlock(doc, doc.lastAutoTable.finalY + 10);
@@ -285,9 +280,9 @@ export function downloadUnitPdf(floor: number, unitLabel: string) {
 
 /* ---------------- A5 tenant receipt ---------------- */
 
-export function downloadReceiptPdf(mi: number, e: Entry, arrears: number) {
+export function downloadReceiptPdf(mi: number, e: Entry) {
   const year = getActiveYear();
-  const due = monthDue(e) + arrears;
+  const due = monthDue(e);
   const bal = due - e.paid;
   const doc = new jsPDF({ format: "a5", orientation: "landscape" });
   const w = doc.internal.pageSize.getWidth();
@@ -326,16 +321,15 @@ export function downloadReceiptPdf(mi: number, e: Entry, arrears: number) {
   autoTable(doc, {
     startY: 53,
     margin: { left: 10, right: 10 },
-    head: [["Description", "Amount (KShs)"]],
+    head: [["Description", "Amount (KSh)"]],
     body: [
       ["Monthly rent", R(e.vacant ? 0 : e.rent)],
       ["Water & other charges", R(e.water)],
-      ["Balance brought forward", R(arrears)],
       [{ content: "Total due", styles: { fontStyle: "bold" as const } }, { ...R(due), styles: { fontStyle: "bold" as const, halign: "right" as const } }],
       [{ content: "Amount paid", styles: { fontStyle: "bold" as const, textColor: GREEN } }, { ...R(e.paid), styles: { fontStyle: "bold" as const, halign: "right" as const, textColor: GREEN } }],
     ],
     foot: [[
-      bal > 0 ? "BALANCE REMAINING" : bal < 0 ? "CREDIT CARRIED FORWARD" : "FULLY SETTLED",
+      bal > 0 ? "BALANCE REMAINING" : bal < 0 ? "OVERPAID THIS MONTH" : "FULLY SETTLED",
       { content: Math.abs(bal).toLocaleString(), styles: { halign: "right" as const } },
     ]],
     footStyles: {

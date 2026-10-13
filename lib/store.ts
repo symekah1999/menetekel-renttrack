@@ -1,6 +1,7 @@
 "use client";
 
 import { FLOORS, unitsForFloor, PROPERTY } from "./config";
+import { Payment, ledgerTotal, receiptsFor } from "./ledger";
 
 export interface Entry {
   floor: number;
@@ -14,6 +15,19 @@ export interface Entry {
   date: string;
   receipt: string;
   vacant: boolean;
+  /** Epoch ms of the last edit, used to merge edits made on different devices. */
+  ts?: number;
+}
+
+/**
+ * A month row with the payments ledger folded in. `paid` is the grand total
+ * (typed amount + ledger rows), so totals and exports can treat it exactly
+ * like the old `paid` field. `receipt` lists every live receipt for the month. Never save one of these back as a
+ * month record: that would double-count the ledger.
+ */
+export interface EffEntry extends Entry {
+  manualPaid: number;
+  ledgerPaid: number;
 }
 
 export type MonthData = Entry[];
@@ -60,6 +74,7 @@ function normalize(e: Partial<Entry>, mi: number, year: number): Entry {
     date: e.date ?? defaultDate(mi, year),
     receipt: e.receipt ?? "",
     vacant: !!e.vacant,
+    ...(typeof e.ts === "number" ? { ts: e.ts } : {}),
   };
 }
 
@@ -116,6 +131,10 @@ export function loadMonth(mi: number, year = getActiveYear()): MonthData {
   }
 }
 
+/** Cloud uploads are debounced so typing a tenant's name isn't one request per letter. */
+const pushTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const PUSH_DELAY_MS = 700;
+
 export function saveMonth(mi: number, data: MonthData, year = getActiveYear()): void {
   if (typeof window === "undefined") return;
   try {
@@ -123,62 +142,84 @@ export function saveMonth(mi: number, data: MonthData, year = getActiveYear()): 
   } catch {
     /* storage full or blocked */
   }
-  // Fire-and-forget cloud sync (no-op when cloud isn't configured or signed out)
+  // Remember that this month has edits the cloud hasn't seen, then send them
+  // shortly. If the device is offline the mark stays and a later load retries.
+  const slot = `${year}:${mi}`;
+  const pending = pushTimers.get(slot);
+  if (pending) clearTimeout(pending);
   import("./cloud")
-    .then((c) => c.pushMonth(year, mi, data))
+    .then((c) =>
+      c.markDirty(year, mi).then(() => {
+        pushTimers.set(
+          slot,
+          setTimeout(() => {
+            pushTimers.delete(slot);
+            // Always send what is stored now, not what was typed 700ms ago.
+            const latest = localStorage.getItem(key(mi, year));
+            const body = latest ? (JSON.parse(latest) as MonthData) : data;
+            c.pushMonth(year, mi, body).catch(() => { /* retried later */ });
+          }, PUSH_DELAY_MS)
+        );
+      })
+    )
     .catch(() => { /* offline - localStorage still holds the data */ });
 }
 
-/* ---------- arrears (carry-over balances) ---------- */
+/* ---------- payments ledger (local cache) ---------- */
 
+const payKey = (year: number) => `${PREFIX}:payments:${year}`;
+
+export function loadPayments(year = getActiveYear()): Payment[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(payKey(year));
+    const parsed = raw ? (JSON.parse(raw) as Payment[]) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePayments(year: number, list: Payment[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(payKey(year), JSON.stringify(list));
+  } catch {
+    /* storage full or blocked */
+  }
+}
+
+/** Fold ledger rows into month rows. Pure. */
+export function applyLedger(
+  rows: Entry[],
+  payments: Payment[],
+  year: number,
+  mi: number
+): EffEntry[] {
+  return rows.map((r) => {
+    const ledgerPaid = ledgerTotal(payments, year, mi, r.floor, r.unit);
+    const receipts = [r.receipt, ...receiptsFor(payments, year, mi, r.floor, r.unit)].filter(Boolean);
+    return { ...r, manualPaid: r.paid, ledgerPaid, paid: r.paid + ledgerPaid, receipt: receipts.join(" ") };
+  });
+}
+
+/** A month as the rest of the app should see it: typed amounts + ledger. */
+export function loadMonthEffective(mi: number, year = getActiveYear()): EffEntry[] {
+  return applyLedger(loadMonth(mi, year), loadPayments(year), year, mi);
+}
+
+/** What a unit is charged for a month: rent plus water and other charges, nothing if vacant. */
 export function monthDue(e: Entry): number {
   return e.vacant ? 0 : e.rent + e.water;
-}
-
-/**
- * Balance carried into (year, mi) for a unit: sum of (due - paid) over all
- * SAVED months before it (untouched months don't create arrears).
- * Negative = credit from overpayment.
- */
-export function unitArrears(
-  mi: number,
-  floor: number,
-  unit: string,
-  year = getActiveYear()
-): number {
-  let arrears = 0;
-  const scan = (y: number, from: number, to: number) => {
-    for (let m = from; m <= to; m++) {
-      if (!hasMonthData(m, y)) continue;
-      const e = loadMonth(m, y).find((r) => r.floor === floor && r.unit === unit);
-      if (e) arrears += monthDue(e) - e.paid;
-    }
-  };
-  scan(year - 1, 0, 11);
-  scan(year, 0, mi - 1);
-  return arrears;
-}
-
-export type ArrearsMap = Record<string, number>;
-
-export function arrearsMapFor(mi: number, year = getActiveYear()): ArrearsMap {
-  const map: ArrearsMap = {};
-  for (const f of FLOORS) {
-    for (const u of unitsForFloor(f)) {
-      map[`${f}|${u.label}`] = unitArrears(mi, f, u.label, year);
-    }
-  }
-  return map;
 }
 
 /* ---------- totals ---------- */
 
 export interface Totals {
   monthCharges: number; // rent + water for occupied units this month
-  arrears: number; // net balance carried in
-  totalDue: number; // monthCharges + arrears
+  totalDue: number; // same as monthCharges: each month stands on its own
   paid: number;
-  balance: number; // totalDue - paid
+  balance: number; // totalDue - paid (negative = this month was overpaid)
   rate: number; // paid / totalDue
   fullyPaid: number;
   defaulters: number;
@@ -186,46 +227,46 @@ export interface Totals {
   vacant: number;
 }
 
-export function computeTotals(rows: MonthData, arrears: ArrearsMap): Totals {
-  let monthCharges = 0, arr = 0, paid = 0, fullyPaid = 0, defaulters = 0, occupied = 0, vacant = 0;
+export function computeTotals(rows: MonthData): Totals {
+  let due = 0, paid = 0, fullyPaid = 0, defaulters = 0, occupied = 0, vacant = 0;
   for (const r of rows) {
-    const a = arrears[`${r.floor}|${r.unit}`] ?? 0;
-    const due = monthDue(r) + a;
-    monthCharges += monthDue(r);
-    arr += a;
+    const d = monthDue(r);
+    due += d;
     paid += r.paid;
     if (r.vacant) vacant++; else occupied++;
-    if (due - r.paid <= 0) fullyPaid++;
+    if (d - r.paid <= 0) fullyPaid++;
     else defaulters++;
   }
-  const totalDue = monthCharges + arr;
   return {
-    monthCharges, arrears: arr, totalDue, paid,
-    balance: totalDue - paid,
-    rate: totalDue > 0 ? Math.round((paid / totalDue) * 100) : 100,
+    monthCharges: due, totalDue: due, paid,
+    balance: due - paid,
+    rate: due > 0 ? Math.round((paid / due) * 100) : 100,
     fullyPaid, defaulters, occupied, vacant,
   };
 }
 
 export function monthTotalsFull(mi: number, year = getActiveYear()): Totals {
-  return computeTotals(loadMonth(mi, year), arrearsMapFor(mi, year));
+  return computeTotals(loadMonthEffective(mi, year));
 }
 
 export function floorTotalsFull(mi: number, floor: number, year = getActiveYear()): Totals {
-  const rows = loadMonth(mi, year).filter((r) => r.floor === floor);
-  return computeTotals(rows, arrearsMapFor(mi, year));
+  const rows = loadMonthEffective(mi, year).filter((r) => r.floor === floor);
+  return computeTotals(rows);
 }
 
 /* ---------- backup / restore ---------- */
+
+/** Keys that hold real records (months, ledgers, active year), not sync bookkeeping. */
+const DATA_KEY = /^menetekel:(\d{4}:\d{1,2}|payments:\d{4}|activeYear)$/;
 
 export function exportBackup(): string {
   const data: Record<string, string> = {};
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith(PREFIX)) data[k] = localStorage.getItem(k) ?? "";
+    if (k && DATA_KEY.test(k)) data[k] = localStorage.getItem(k) ?? "";
   }
   return JSON.stringify(
-    { app: "menetekel-renttrack", version: 4, exportedAt: new Date().toISOString(), data },
+    { app: "menetekel-renttrack", version: 5, exportedAt: new Date().toISOString(), data },
     null,
     2
   );
@@ -239,7 +280,7 @@ export function importBackup(json: string): { ok: boolean; keys: number; error?:
     }
     let n = 0;
     for (const [k, v] of Object.entries(parsed.data)) {
-      if (k.startsWith(PREFIX)) {
+      if (DATA_KEY.test(k)) {
         localStorage.setItem(k, v);
         n++;
       }
@@ -252,10 +293,18 @@ export function importBackup(json: string): { ok: boolean; keys: number; error?:
 
 /* ---------- WhatsApp helper ---------- */
 
-export function whatsAppLink(e: Entry, balance: number, monthName: string, year: number): string {
+export function whatsAppLink(
+  e: Entry,
+  balance: number,
+  monthName: string,
+  year: number,
+  scope: "month" | "cumulative" = "month"
+): string {
   const msg =
     `Hello ${e.tenant || "tenant"}, greetings from ${PROPERTY.name}. ` +
-    `Your ${monthName} ${year} balance for ${e.unit} (Floor ${e.floor}) is KShs ${balance.toLocaleString()}. ` +
+    (scope === "cumulative"
+      ? `Your outstanding rent balance for ${e.unit} (Floor ${e.floor}) up to ${monthName} ${year} is KSh ${balance.toLocaleString()}. `
+      : `Your ${monthName} ${year} balance for ${e.unit} (Floor ${e.floor}) is KSh ${balance.toLocaleString()}. `) +
     `Kindly clear it via ${PROPERTY.paymentMode} at your earliest convenience. Thank you.`;
   const digits = e.phone.replace(/\D/g, "");
   const intl = digits.startsWith("0") ? "254" + digits.slice(1) : digits;

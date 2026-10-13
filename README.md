@@ -1,31 +1,78 @@
-# Menetekel Apartments — RentTrack
+# Menetekel RentTrack
 
-Rent collection app for Menetekel Apartments, Nairobi.
-5 floors · 34 units · Unit 6+7 merged on Floor 0 · KShs 198,900/month target.
+Rent collection for Menetekel Apartments, Nairobi: 5 floors, 34 units, Unit 6+7 merged on
+Floor 0. The monthly target is added up from the rents in `lib/config.ts`
+(currently KSh 194,700), so it can never disagree with what the building charges.
+
+The home screen is the building itself. Each unit is a window that fills with colour as its
+rent arrives: green when paid, amber while part-paid, red when owing, hatched when vacant.
 
 ## Pages
 
 | Route | Purpose |
 |---|---|
-| `/` | Property overview and floor browser |
-| `/collect` | Monthly data entry — floor tabs, live balances, autosave |
-| `/reports` | KPIs, floor breakdown, 12-month trend, Excel + PDF downloads |
-| `/settings` | Property details and rent schedule reference |
+| `/` | Introduction page: what RentTrack is and how a month works. Stands on its own, no sign-in |
+| `/dashboard` | The building for any month, collection so far, and who still owes (unit panel on the right) |
+| `/collect` | Open a month, edit tenants, and take payments per unit (side panel) |
+| `/cumulative` | Running totals for the year: charged, collected and outstanding per unit, month by month |
+| `/reports` | Monthly KPIs, floor table, 12-month trend, Excel and PDF downloads |
+| `/settings` | Team, active year, backup and restore, rent schedule, sample data |
 
-## Data
+Signed-in pages share a side panel on wide screens and a tab bar on phones.
 
-- Entries autosave to browser localStorage, keyed per month (`menetekel:2026:<month>`).
-- The Excel export builds a 12-sheet workbook (one sheet per month) from saved data.
-- The PDF export produces a one-page summary for the selected month.
-- The rent schedule lives in `lib/config.ts` — edit and redeploy to change rates.
+## Months are independent
+
+Each month stands on its own: what a unit owes for a month is that month's rent and water,
+and what it has paid is that month's payments. Nothing is carried in from earlier months, so
+reports, exports and the dashboard for a month always agree with each other.
+
+The **Cumulative** page is the one place months are added together (January to the month you
+pick): what each unit has been charged and has paid, what is outstanding, and a month-by-month
+strip showing where it fell behind. A unit's shortfall in March stays in the running total until
+it is paid; it is never silently added to April's rent. The year workbook also carries an
+"Outstanding to date" column. Cumulative totals run per calendar year.
+
+## How money is recorded
+
+Every payment is one row in an **append-only ledger** (`payments` table, mirrored in
+`localStorage` as `menetekel:payments:<year>`). A unit's paid amount for a month is the sum of
+its ledger rows. Mistakes are fixed with a negative *reversal* row, never by editing, so there
+is always an audit trail. A unique index on the M-Pesa receipt stops the same payment being
+entered twice, and a unique index on `checkout_id` guarantees one ledger row per M-Pesa prompt
+however many times Safaricom calls back.
+
+Month records (tenants, phones, water charges, vacancies) are still stored per month. Edits
+carry a timestamp per unit and merge unit by unit, so two devices editing different units
+never overwrite each other. Amounts typed into month records before the ledger existed are
+still counted and shown as "Entered before the ledger".
+
+A month has to be **opened** before it counts (Collect rent, Open month). Viewing a month no
+longer creates it, so browsing ahead can't create empty months.
+
+## Upgrading an existing deployment
+
+1. Run `supabase-payments.sql` in the Supabase SQL editor **before** deploying this version.
+2. Deploy. No new environment variables are needed.
+
+## Quality
+
+```bash
+npm test          # 62 unit tests: ledger, merging, independent months, cumulative totals, M-Pesa parsing, status logic
+npm run typecheck
+npm run build
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs all three on every push.
 
 ## Run locally
 
 ```bash
 npm install
-npm run dev
-# open http://localhost:3000
+npm run dev       # http://localhost:3000
 ```
+
+Without Supabase variables the app runs in local mode. Settings then offers **Load sample
+data** (fictional tenants only) so every screen can be explored.
 
 ## Deploy to Vercel (via GitHub)
 
@@ -77,7 +124,7 @@ in the browser).
 
 ## M-Pesa STK Push (v6)
 
-The 📲 button on each unit sends a real M-Pesa payment prompt to the tenant's
+The **Ask for payment on M-Pesa** card in each unit panel sends a real M-Pesa payment prompt to the tenant's
 phone; on success the payment is written to the shared records automatically
 with the M-Pesa receipt number.
 

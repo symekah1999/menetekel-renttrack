@@ -6,10 +6,10 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Menetekel",
     description:
       "Rent collection for Menetekel Apartments, Nairobi. 5 floors, 34 units, live balances, Excel and PDF exports.",
-    start_url: "/",
+    start_url: "/dashboard",
     display: "standalone",
-    background_color: "#060a13",
-    theme_color: "#0a0f1a",
+    background_color: "#f4f2f9",
+    theme_color: "#3e2a7e",
     orientation: "portrait-primary",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },

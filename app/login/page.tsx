@@ -3,14 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase, cloudConfigured } from "@/lib/supabase";
+import { IconBuilding, IconCheck, IconAlert } from "@/components/Icons";
 
 type Mode = "signin" | "signup" | "forgot" | "recovery";
-
-const inputStyle: React.CSSProperties = {
-  width: "100%", background: "rgba(255,255,255,0.05)",
-  border: "0.5px solid var(--line)", borderRadius: 8,
-  padding: "11px 13px", fontSize: 13, color: "var(--txt)", outline: "none",
-};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,7 +25,7 @@ export default function LoginPage() {
     });
     // Already signed in? Straight to work.
     sb.auth.getSession().then(({ data }) => {
-      if (data.session && mode === "signin") router.replace("/collect");
+      if (data.session && mode === "signin") router.replace("/dashboard");
     });
     return () => sub.subscription.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -38,16 +33,14 @@ export default function LoginPage() {
 
   if (!cloudConfigured()) {
     return (
-      <main className="shell" style={{ paddingTop: 70, maxWidth: 520 }}>
-        <div className="card card-gold" style={{ padding: 26 }}>
-          <h1 style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Accounts not set up yet</h1>
-          <p style={{ fontSize: 12.5, color: "var(--txt-2)", lineHeight: 1.8 }}>
-            Cloud accounts need the Supabase environment variables
-            (<code style={{ color: "var(--gold)" }}>NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-            <code style={{ color: "var(--gold)" }}>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>)
-            to be added in Vercel, then a redeploy. Until then the app works in
-            local mode without login.
+      <main className="shell page" style={{ maxWidth: 560 }}>
+        <div className="card" style={{ marginTop: 48 }}>
+          <h1 className="h2 mb-8">Accounts aren&apos;t set up yet</h1>
+          <p className="muted" style={{ lineHeight: 1.65 }}>
+            Cloud accounts need <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in
+            your Vercel settings, then a redeploy. Until then the app works without a login, with records kept in this browser.
           </p>
+          <a className="btn btn-primary mt-16" href="/dashboard">Open the app</a>
         </div>
       </main>
     );
@@ -61,7 +54,7 @@ export default function LoginPage() {
       if (mode === "signin") {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.replace("/collect");
+        router.replace("/dashboard");
       } else if (mode === "signup") {
         if (password.length < 8) throw new Error("Password must be at least 8 characters.");
         if (password !== password2) throw new Error("Passwords do not match.");
@@ -84,7 +77,7 @@ export default function LoginPage() {
         const { error } = await sb.auth.updateUser({ password });
         if (error) throw error;
         setMsg({ ok: true, text: "Password updated. You are signed in." });
-        setTimeout(() => router.replace("/collect"), 900);
+        setTimeout(() => router.replace("/dashboard"), 900);
       }
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Something went wrong. Try again." });
@@ -101,75 +94,73 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="shell" style={{ paddingTop: 56, maxWidth: 440, paddingBottom: 40 }}>
-      <div style={{ textAlign: "center", marginBottom: 22 }}>
-        <div className="brand-mark" style={{ width: 52, height: 52, fontSize: 24, margin: "0 auto 12px", borderRadius: 13 }}>M</div>
-        <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.5 }}>MENETEKEL APARTMENTS</div>
-        <div style={{ fontSize: 10, color: "var(--txt-3)", letterSpacing: 2, textTransform: "uppercase", marginTop: 3 }}>Rent collection · Nairobi</div>
-      </div>
+    <div className="auth">
+      <section className="auth-art" aria-hidden>
+        <div className="row gap-12">
+          <span className="brand-mark" style={{ background: "rgba(255,255,255,0.14)" }}><IconBuilding width={20} height={20} /></span>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 19 }}>Menetekel</span>
+        </div>
+        <div>
+          <h2>Know who has paid, floor by floor.</h2>
+          <div className="mini" style={{ marginTop: 28 }}>
+            {"p p p h p p o p p p p p h p p o p p p p p p p h p p p p p p p p p p o".split(" ").map((c, i) => (
+              <i key={i} className={c} />
+            ))}
+          </div>
+        </div>
+        <span style={{ opacity: 0.7, fontSize: 14 }}>Menetekel Apartments, Nairobi</span>
+      </section>
 
-      <div className="card card-gold" style={{ padding: 24 }}>
-        <h1 style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{titles[mode][0]}</h1>
-        <p style={{ fontSize: 11.5, color: "var(--txt-2)", marginBottom: 18, lineHeight: 1.6 }}>{titles[mode][1]}</p>
+      <main className="auth-form">
+        <h1 className="h1 mb-8" style={{ fontSize: 32 }}>{titles[mode][0]}</h1>
+        <p className="lede mb-24">{titles[mode][1]}</p>
 
         {msg && (
-          <div className="info-banner" style={{
-            marginBottom: 14,
-            borderColor: msg.ok ? "rgba(74,222,128,0.35)" : "rgba(248,113,113,0.35)",
-            background: msg.ok ? "rgba(74,222,128,0.07)" : "rgba(248,113,113,0.07)",
-          }}>
-            {msg.text}
+          <div className={`banner ${msg.ok ? "banner-ok" : "banner-bad"}`} role="alert">
+            {msg.ok ? <IconCheck /> : <IconAlert />}<span>{msg.text}</span>
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <form className="stack gap-16" onSubmit={(e) => { e.preventDefault(); submit(); }} noValidate>
           {mode !== "recovery" && (
-            <input style={inputStyle} type="email" placeholder="Email address" value={email}
-              autoComplete="email" onChange={(e) => setEmail(e.target.value)} />
+            <label className="field"><span>Email address</span>
+              <input className="input" type="email" value={email} autoComplete="email" inputMode="email" required
+                onChange={(e) => setEmail(e.target.value)} /></label>
           )}
           {mode !== "forgot" && (
-            <input style={inputStyle} type="password"
-              placeholder={mode === "recovery" ? "New password (min 8 characters)" : "Password"}
-              value={password} autoComplete={mode === "signin" ? "current-password" : "new-password"}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && mode === "signin") submit(); }} />
+            <label className="field"><span>{mode === "recovery" ? "New password (at least 8 characters)" : "Password"}</span>
+              <input className="input" type="password" value={password} required
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                onChange={(e) => setPassword(e.target.value)} /></label>
           )}
           {(mode === "signup" || mode === "recovery") && (
-            <input style={inputStyle} type="password" placeholder="Confirm password"
-              value={password2} autoComplete="new-password"
-              onChange={(e) => setPassword2(e.target.value)} />
+            <label className="field"><span>Confirm password</span>
+              <input className="input" type="password" value={password2} autoComplete="new-password" required
+                onChange={(e) => setPassword2(e.target.value)} /></label>
           )}
-          <button className="btn-gold" style={{ justifyContent: "center", padding: "12px 20px" }}
-            disabled={busy} onClick={submit}>
+          <button className="btn btn-primary" style={{ minHeight: 50 }} disabled={busy} type="submit">
             {busy ? "Please wait…" :
               mode === "signin" ? "Sign in" :
               mode === "signup" ? "Create account" :
               mode === "forgot" ? "Send reset link" : "Update password"}
           </button>
-        </div>
+        </form>
 
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, fontSize: 11.5 }}>
+        <div className="row between mt-16 small">
           {mode === "signin" ? (
             <>
-              <button onClick={() => { setMode("signup"); setMsg(null); }} style={{ background: "none", border: "none", color: "var(--gold)", fontSize: 11.5 }}>
-                Create an account
-              </button>
-              <button onClick={() => { setMode("forgot"); setMsg(null); }} style={{ background: "none", border: "none", color: "var(--txt-2)", fontSize: 11.5 }}>
-                Forgot password?
-              </button>
+              <button className="btn btn-sm" style={{ color: "var(--brand)", paddingLeft: 0 }} onClick={() => { setMode("signup"); setMsg(null); }}>Create an account</button>
+              <button className="btn btn-sm" style={{ color: "var(--ink-2)" }} onClick={() => { setMode("forgot"); setMsg(null); }}>Forgot password?</button>
             </>
           ) : mode !== "recovery" ? (
-            <button onClick={() => { setMode("signin"); setMsg(null); }} style={{ background: "none", border: "none", color: "var(--txt-2)", fontSize: 11.5 }}>
-              ← Back to sign in
-            </button>
+            <button className="btn btn-sm" style={{ color: "var(--ink-2)", paddingLeft: 0 }} onClick={() => { setMode("signin"); setMsg(null); }}>Back to sign in</button>
           ) : <span />}
         </div>
-      </div>
 
-      <p style={{ fontSize: 10.5, color: "var(--txt-3)", textAlign: "center", marginTop: 16, lineHeight: 1.7 }}>
-        All approved accounts share the same building records.<br />
-        New accounts need the owner&apos;s approval (Settings → Team).
-      </p>
-    </main>
+        <p className="faint small mt-24" style={{ lineHeight: 1.6 }}>
+          Every approved account shares the same building records. New accounts need the owner&apos;s approval in Settings.
+        </p>
+      </main>
+    </div>
   );
 }

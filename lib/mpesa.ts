@@ -1,7 +1,7 @@
 "use client";
 
 import Papa from "papaparse";
-import { Entry, monthDue, ArrearsMap } from "./store";
+import { Entry, monthDue } from "./store";
 
 export interface MpesaTxn {
   receipt: string;
@@ -57,7 +57,7 @@ export function parseMpesaCsv(text: string): { txns: MpesaTxn[]; error?: string 
  * 2. amount exactly equals a unit's outstanding balance (unique).
  * Returns row index into `rows` or -1.
  */
-export function autoMatch(txns: MpesaTxn[], rows: Entry[], arrears: ArrearsMap): number[] {
+export function autoMatch(txns: MpesaTxn[], rows: Entry[]): number[] {
   return txns.map((t) => {
     const details = t.details.toUpperCase();
     if (details) {
@@ -72,7 +72,7 @@ export function autoMatch(txns: MpesaTxn[], rows: Entry[], arrears: ArrearsMap):
     const amtHits = rows
       .map((r, i) => ({ r, i }))
       .filter(({ r }) => {
-        const outstanding = monthDue(r) + (arrears[`${r.floor}|${r.unit}`] ?? 0) - r.paid;
+        const outstanding = monthDue(r) - r.paid;
         return outstanding > 0 && outstanding === t.amount;
       });
     if (amtHits.length === 1) return amtHits[0].i;

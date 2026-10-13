@@ -1,44 +1,30 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/bricolage-grotesque/wdth.css";
+import "@fontsource-variable/figtree";
 import "./globals.css";
-import Nav from "@/components/Nav";
 import PwaRegister from "@/components/PwaRegister";
 
 export const metadata: Metadata = {
   title: "Menetekel Apartments — RentTrack",
   description:
-    "Rent collection for Menetekel Apartments, Nairobi. 5 floors, 34 units, live balances, Excel and PDF exports.",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Menetekel",
-  },
-  icons: {
-    apple: "/apple-touch-icon.png",
-  },
+    "Rent collection for Menetekel Apartments, Nairobi. 5 floors, 34 units, M-Pesa prompts, a payments ledger, and monthly and cumulative reports.",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Menetekel" },
+  icons: { apple: "/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0f1a",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f2f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#14112a" },
+  ],
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
         <PwaRegister />
-        <Nav />
         {children}
-        <footer className="site">
-          <span>
-            <b style={{ color: "rgba(200,169,81,0.6)" }}>MENETEKEL APARTMENTS</b>{" "}
-            · Nairobi, Kenya · 2026
-          </span>
-          <span>Managed with RentTrack</span>
-        </footer>
       </body>
     </html>
   );
