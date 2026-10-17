@@ -103,7 +103,8 @@ export function blankMonth(mi: number, year = getActiveYear()): MonthData {
       rows.push({
         floor: f,
         unit: u.label,
-        rent: u.rent,
+        // A new month copies the rent from the month before, so a rent change carries forward.
+        rent: carry?.rent ?? u.rent,
         merged: !!u.merged,
         tenant: carry?.tenant ?? "",
         phone: carry?.phone ?? "",

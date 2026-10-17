@@ -49,6 +49,15 @@ still counted and shown as "Entered before the ledger".
 A month has to be **opened** before it counts (Collect rent, Open month). Viewing a month no
 longer creates it, so browsing ahead can't create empty months.
 
+## Rents
+
+Rents are edited in the app, under Settings, Rents. Pick the month the change starts from and
+set any unit's rent. Months already saved from that month on are updated; earlier months and
+the payments recorded against them are not. A month opened later copies the rents from the
+month before, so a change carries forward by itself. `lib/config.ts` only supplies the rents
+for the very first month. A single month's rent can also be edited on Collect rent, and that
+changes only that month.
+
 ## Upgrading an existing deployment
 
 1. Run `supabase-payments.sql` in the Supabase SQL editor **before** deploying this version.
