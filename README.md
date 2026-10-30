@@ -58,6 +58,19 @@ month before, so a change carries forward by itself. `lib/config.ts` only suppli
 for the very first month. A single month's rent can also be edited on Collect rent, and that
 changes only that month.
 
+## Tenants
+
+The **Tenants** tab is where each unit's occupant is recorded: name, phone, ID or passport number,
+email, move-in date, deposit and notes. Collect rent, the Remind buttons, M-Pesa prompts, receipts and
+reports all read these details, so they are entered once.
+
+When a tenant changes, open the unit, choose the month the change starts from and save. Months from
+then on show the new tenant; earlier months keep the old one, so past receipts and reports still
+name the right person. A unit can be marked vacant from a month and filled again later. If the
+unit still owes money from earlier months, the panel says so before you save. Months opened later
+copy the details from the month before. Nothing new is needed in the database: the details live
+in the month records.
+
 ## Upgrading an existing deployment
 
 1. Run `supabase-payments.sql` in the Supabase SQL editor **before** deploying this version.

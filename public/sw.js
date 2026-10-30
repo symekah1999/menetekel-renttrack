@@ -1,5 +1,5 @@
-const CACHE = "menetekel-v8";
-const PRECACHE = ["/", "/dashboard", "/collect", "/cumulative", "/reports", "/settings", "/login"];
+const CACHE = "menetekel-v9";
+const PRECACHE = ["/", "/dashboard", "/tenants", "/collect", "/cumulative", "/reports", "/settings", "/login"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

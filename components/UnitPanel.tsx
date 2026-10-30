@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { MONTHS } from "@/lib/config";
 import { EffEntry, Entry, whatsAppLink } from "@/lib/store";
 import {
@@ -248,6 +249,10 @@ export default function UnitPanel({
           <div className="stack gap-12">
             <label className="field"><span>Tenant name</span>
               <input className="input" value={entry.tenant} disabled={entry.vacant} onChange={(e) => onPatch({ tenant: e.target.value })} /></label>
+            <p className="faint tiny" style={{ marginTop: -4 }}>
+              Edited here changes this month only. For a new tenant, or details that should carry forward, use{" "}
+              <Link href={`/tenants?month=${month}&floor=${entry.floor}&unit=${encodeURIComponent(entry.unit)}`} style={{ textDecoration: "underline" }}>Tenants</Link>.
+            </p>
             <div className="row gap-8 wrap">
               <label className="field grow" style={{ minWidth: 150 }}><span>Phone</span>
                 <input className="input" inputMode="tel" placeholder="07XX XXX XXX" value={entry.phone} disabled={entry.vacant}

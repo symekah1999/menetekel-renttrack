@@ -83,3 +83,7 @@ export const IconEyeOff = (p: P) => (
 export const IconShield = (p: P) => (
   <svg {...base(p)}><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6L12 3Z" /><path d="m9 12 2.2 2.2L15.5 10" /></svg>
 );
+
+export const IconUsers = (p: P) => (
+  <svg {...base(p)}><circle cx="9" cy="8" r="3.2" /><path d="M2.8 20c.4-3.4 3-5.4 6.2-5.4s5.8 2 6.2 5.4" /><path d="M16.5 4.9a3.2 3.2 0 0 1 0 6.2M18 14.8c1.9.6 3.1 2.3 3.4 5.2" /></svg>
+);

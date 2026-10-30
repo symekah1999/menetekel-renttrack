@@ -15,6 +15,12 @@ export interface Entry {
   date: string;
   receipt: string;
   vacant: boolean;
+  /** Tenant profile details, filled in on the Tenants page (all optional). */
+  idNo?: string;
+  email?: string;
+  moveIn?: string; // yyyy-mm-dd
+  deposit?: number;
+  notes?: string;
   /** Epoch ms of the last edit, used to merge edits made on different devices. */
   ts?: number;
 }
@@ -74,6 +80,11 @@ function normalize(e: Partial<Entry>, mi: number, year: number): Entry {
     date: e.date ?? defaultDate(mi, year),
     receipt: e.receipt ?? "",
     vacant: !!e.vacant,
+    ...(e.idNo ? { idNo: e.idNo } : {}),
+    ...(e.email ? { email: e.email } : {}),
+    ...(e.moveIn ? { moveIn: e.moveIn } : {}),
+    ...(e.deposit ? { deposit: e.deposit } : {}),
+    ...(e.notes ? { notes: e.notes } : {}),
     ...(typeof e.ts === "number" ? { ts: e.ts } : {}),
   };
 }
@@ -113,6 +124,12 @@ export function blankMonth(mi: number, year = getActiveYear()): MonthData {
         date: defaultDate(mi, year),
         receipt: "",
         vacant: carry?.vacant ?? false,
+        // The tenant's profile follows the unit into each newly opened month.
+        ...(carry?.idNo ? { idNo: carry.idNo } : {}),
+        ...(carry?.email ? { email: carry.email } : {}),
+        ...(carry?.moveIn ? { moveIn: carry.moveIn } : {}),
+        ...(carry?.deposit ? { deposit: carry.deposit } : {}),
+        ...(carry?.notes ? { notes: carry.notes } : {}),
       });
     }
   }

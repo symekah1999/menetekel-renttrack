@@ -131,7 +131,7 @@ button { cursor: pointer; }
   .shell, .topbar-inner { padding: 0 16px; }
   .page { padding-top: 20px; padding-bottom: calc(var(--tabbar-h) + 40px); }
   .tabbar {
-    display: grid; grid-template-columns: repeat(5, 1fr);
+    display: grid; grid-template-columns: repeat(6, 1fr);
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
     height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
@@ -700,3 +700,30 @@ footer.site { max-width: 1120px; margin: 0 auto; padding: 24px 20px 32px; color:
 @media (prefers-reduced-motion: reduce) {
   .auth-art .ms-star, .auth-art .ms-beacon, .auth-art .ms-flicker, .auth-art .ms-toggle, .auth-art .ms-glow { animation: none !important; }
 }
+
+/* ---------- tenants ---------- */
+
+.tstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+.tgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+.tcard {
+  display: flex; flex-direction: column; gap: 10px; text-align: left; width: 100%;
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r-l);
+  padding: 16px; box-shadow: var(--shadow); transition: border-color 0.15s, transform 0.12s;
+}
+.tcard:hover { border-color: var(--brand); transform: translateY(-1px); }
+.tcard.is-vacant { background: var(--surface-2); box-shadow: none; border-style: dashed; }
+.tcard-top { display: flex; align-items: center; gap: 12px; }
+.avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: var(--brand-tint); color: var(--brand-deep); font-weight: 800; font-size: 16px;
+}
+@media (prefers-color-scheme: dark) { .avatar { color: var(--brand); } }
+.tcard.is-vacant .avatar { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--ink-3); }
+.tcard .nm { font-family: var(--font-display); font-weight: 700; font-size: 19px; letter-spacing: -0.3px; line-height: 1.2; overflow-wrap: anywhere; }
+.tcard .meta { font-size: 14.5px; color: var(--ink-2); display: grid; gap: 2px; }
+.history { list-style: none; display: grid; gap: 8px; }
+.history li { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--r-s); }
+.history li.now { background: var(--brand-tint); font-weight: 700; }
+.textarea { min-height: 84px; padding: 10px 14px; resize: vertical; line-height: 1.45; }
+@media (max-width: 760px) { .tstats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 430px) { .tab { font-size: 11px; } .tab svg { width: 21px; height: 21px; } }
