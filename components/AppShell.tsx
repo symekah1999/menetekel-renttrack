@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getSupabase, cloudConfigured } from "@/lib/supabase";
-import { IconBuilding, IconCoins, IconChart, IconGear, IconLayers, IconGrid, IconUsers } from "./Icons";
+import { IconBuilding, IconCoins, IconChart, IconGear, IconLayers, IconGrid, IconUsers, IconChevron } from "./Icons";
 import SyncStatus from "./SyncStatus";
 
 const LINKS = [
@@ -23,6 +23,17 @@ const LINKS = [
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [email, setEmail] = useState<string | null>(null);
+  // Wide screens can fold the side panel down to an icon rail; the choice is remembered.
+  const [rail, setRail] = useState(false);
+  useEffect(() => {
+    try { setRail(localStorage.getItem("menetekel:rail") === "1"); } catch { /* ignore */ }
+  }, []);
+  function toggleRail() {
+    setRail((r) => {
+      try { localStorage.setItem("menetekel:rail", r ? "0" : "1"); } catch { /* ignore */ }
+      return !r;
+    });
+  }
 
   useEffect(() => {
     const sb = getSupabase();
@@ -40,7 +51,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="app">
+    <div className={`app ${rail ? "rail" : ""}`}>
       <aside className="side" aria-label="Side panel">
         <Link href="/dashboard" className="brand side-brand" aria-label="Menetekel Apartments, dashboard">
           <span className="brand-mark"><IconBuilding width={20} height={20} /></span>
@@ -52,7 +63,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         <nav className="side-nav" aria-label="Main">
           {LINKS.map(({ href, label, Icon, hint }) => (
-            <Link key={href} href={href} className="side-link" aria-current={current(href) ? "page" : undefined}>
+            <Link key={href} href={href} className="side-link" title={label} aria-label={label} aria-current={current(href) ? "page" : undefined}>
               <Icon />
               <span>
                 <span className="side-label">{label}</span>
@@ -63,6 +74,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="side-foot">
+          <button type="button" className="side-toggle" onClick={toggleRail} aria-pressed={rail}
+            aria-label={rail ? "Expand the side panel" : "Collapse the side panel to icons"} title={rail ? "Expand" : "Collapse"}>
+            <IconChevron dir="left" /><span className="tt">Collapse</span>
+          </button>
           <SyncStatus />
           {cloudConfigured() && email && (
             <div className="side-user">

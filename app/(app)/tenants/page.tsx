@@ -6,6 +6,7 @@ import { blankMonth, getActiveYear, saveMonth } from "@/lib/store";
 import { SYNC_EVENT } from "@/lib/cloud";
 import { missingDetails, openedMonths, tenantsAsOf, unitId } from "@/lib/tenants";
 import AuthGuard from "@/components/AuthGuard";
+import Intro from "@/components/Intro";
 import TenantPanel from "@/components/TenantPanel";
 import { IconCheck, IconPhone } from "@/components/Icons";
 
@@ -78,10 +79,12 @@ function TenantsInner() {
   return (
     <main className="shell page" style={{ maxWidth: 1120 }}>
       <h1 className="h1 mb-8">Tenants</h1>
-      <p className="lede mb-16">
+      <div className="mb-16">
+        <Intro>
         Fill in who lives in each unit once. Their name and phone then appear automatically in Collect rent, reminders, receipts
         and reports. When a tenant changes, update the unit from the month it happens; earlier months keep the old tenant.
-      </p>
+      </Intro>
+      </div>
 
       {msg && (
         <div className="banner banner-ok" role="status">
@@ -101,10 +104,10 @@ function TenantsInner() {
       )}
 
       <dl className="tstats">
-        <div className="kpi"><dt>Tenants on record</dt><dd>{stats.tenants}</dd></div>
-        <div className="kpi"><dt>Vacant units</dt><dd>{stats.vacant}</dd></div>
-        <div className="kpi"><dt>No name yet</dt><dd className={stats.noName ? "owe" : ""}>{stats.noName}</dd></div>
-        <div className="kpi"><dt>No phone yet</dt><dd className={stats.noPhone ? "owe" : ""}>{stats.noPhone}</dd></div>
+        <div className="kpi"><dt><span className="hide-sm">Tenants on record</span><span className="show-sm">Tenants</span></dt><dd>{stats.tenants}</dd></div>
+        <div className="kpi"><dt><span className="hide-sm">Vacant units</span><span className="show-sm">Vacant</span></dt><dd>{stats.vacant}</dd></div>
+        <div className="kpi"><dt><span className="hide-sm">No name yet</span><span className="show-sm">No name</span></dt><dd className={stats.noName ? "owe" : ""}>{stats.noName}</dd></div>
+        <div className="kpi"><dt><span className="hide-sm">No phone yet</span><span className="show-sm">No phone</span></dt><dd className={stats.noPhone ? "owe" : ""}>{stats.noPhone}</dd></div>
       </dl>
 
       <div className="toolbar">
@@ -148,8 +151,8 @@ function TenantsInner() {
                 {!c.d.vacant && (
                   <div className="meta">
                     <span className="row gap-8"><IconPhone width={15} height={15} />{c.d.phone || <span className="owe">No phone yet</span>}</span>
-                    {c.d.moveIn && <span>Moved in {new Date(c.d.moveIn + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
-                    {c.d.deposit > 0 && <span>Deposit KSh {c.d.deposit.toLocaleString()}</span>}
+                    {c.d.moveIn && <span className="opt">Moved in {new Date(c.d.moveIn + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
+                    {c.d.deposit > 0 && <span className="opt">Deposit KSh {c.d.deposit.toLocaleString()}</span>}
                   </div>
                 )}
                 <div className="row gap-8 wrap">

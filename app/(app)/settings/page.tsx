@@ -10,6 +10,9 @@ import AuthGuard from "@/components/AuthGuard";
 import { IconDownload, IconUpload, IconCheck } from "@/components/Icons";
 import RentEditor from "@/components/RentEditor";
 import AccountCard from "@/components/AccountCard";
+import Fold from "@/components/Fold";
+import Intro from "@/components/Intro";
+import ThemeSwitch from "@/components/ThemeSwitch";
 
 const YEARS = [2025, 2026, 2027, 2028, 2029, 2030];
 
@@ -85,9 +88,11 @@ function SettingsPageInner() {
   return (
     <main className="shell page" style={{ maxWidth: 780 }}>
       <h1 className="h1 mb-8">Settings</h1>
-      <p className="lede mb-24">
+      <div className="mb-16">
+        <Intro>
         Accounts, backups and rents. Change any unit&apos;s rent below, from the month you choose.
-      </p>
+      </Intro>
+      </div>
 
       {msg && (
         <div className="banner banner-ok" role="status">
@@ -99,8 +104,7 @@ function SettingsPageInner() {
       <AccountCard />
 
       {cloudConfigured() && me?.role === "owner" && (
-        <section className="card mb-16" aria-labelledby="team">
-          <h2 className="h2 mb-8" id="team">Team</h2>
+        <Fold id="team" title="Team" hint="Who can see and edit the records">
           <p className="muted mb-16">
             Everyone who has made an account. Approved members can see and edit all building records;
             anyone else sees nothing.
@@ -134,11 +138,10 @@ function SettingsPageInner() {
             One-time move of everything saved in this browser to the cloud, so every approved account shares it.
             If someone already edited the same unit, the most recent edit wins.
           </p>
-        </section>
+        </Fold>
       )}
 
-      <section className="card mb-16" aria-labelledby="year">
-        <h2 className="h2 mb-8" id="year">Active year</h2>
+      <Fold id="year" title="Active year" hint="Which year Collect and Reports show">
         <p className="muted mb-16">
           Each year keeps its own records. Switching to a new year leaves the old one saved, and
           tenant names and unpaid balances carry across.
@@ -148,10 +151,14 @@ function SettingsPageInner() {
             <button key={y} aria-pressed={y === year} onClick={() => changeYear(y)}>{y}</button>
           ))}
         </div>
-      </section>
+      </Fold>
 
-      <section className="card mb-16" aria-labelledby="backup">
-        <h2 className="h2 mb-8" id="backup">Backup and restore</h2>
+      <Fold id="appearance" title="Appearance" hint="Light, dark, or match your phone">
+        <p className="muted mb-16">Applies to this device only.</p>
+        <ThemeSwitch />
+      </Fold>
+
+      <Fold id="backup" title="Backup and restore" hint="Download or restore all records">
         <p className="muted mb-16">
           {local
             ? "Records live in this browser only. Export a backup regularly; it also moves your data between phone and laptop."
@@ -163,21 +170,19 @@ function SettingsPageInner() {
           <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: "none" }} aria-label="Choose a backup file"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) doImport(f); }} />
         </div>
-      </section>
+      </Fold>
 
       {local && (
-        <section className="card mb-16" aria-labelledby="demo">
-          <h2 className="h2 mb-8" id="demo">Try it with sample data</h2>
+        <Fold id="demo" title="Try it with sample data" hint="Fictional tenants for exploring">
           <p className="muted mb-16">
             Fills this browser with fictional tenants and payments so you can explore every screen.
             Only available while accounts aren&apos;t configured, so it can never touch real records.
           </p>
           <button className="btn btn-soft" onClick={doDemo}>Load sample data</button>
-        </section>
+        </Fold>
       )}
 
-      <section className="card mb-16" aria-labelledby="details">
-        <h2 className="h2 mb-8" id="details">Property</h2>
+      <Fold id="details" title="Property" hint="Name, manager, payment mode">
         {[
           ["Name", PROPERTY.name],
           ["Location", PROPERTY.location],
@@ -187,7 +192,7 @@ function SettingsPageInner() {
         ].map(([k, v]) => (
           <div className="set-row" key={k}><span className="muted">{k}</span><span className="strong">{v}</span></div>
         ))}
-      </section>
+      </Fold>
 
       <RentEditor key={year} year={year} onDone={setMsg} />
     </main>

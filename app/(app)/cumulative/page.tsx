@@ -8,6 +8,9 @@ import { SYNC_EVENT } from "@/lib/cloud";
 import { loadCumulative, UnitCumulative, MonthCell } from "@/lib/cumulative";
 import { STATUS_LABEL, compact } from "@/lib/status";
 import AuthGuard from "@/components/AuthGuard";
+import Intro from "@/components/Intro";
+import Amt from "@/components/Amt";
+import DensityToggle, { useDensity } from "@/components/DensityToggle";
 import { IconChat, IconChevron } from "@/components/Icons";
 
 function Outstanding({ series, through }: { series: { month: number; billed: number; paid: number; opened: boolean }[]; through: number }) {
@@ -43,6 +46,7 @@ function Strip({ cells, through }: { cells: MonthCell[]; through: number }) {
 function CumulativeInner() {
   const [through, setThrough] = useState(new Date().getMonth());
   const [floor, setFloor] = useState<number | "all">("all");
+  const [density, setDensity] = useDensity();
   const [onlyOwing, setOnlyOwing] = useState(false);
   const [year, setYear] = useState(0);
   const [tick, setTick] = useState(0);
@@ -83,10 +87,12 @@ function CumulativeInner() {
           <button className="btn btn-line btn-icon" aria-label="Later month" disabled={through === 11} onClick={() => setThrough(through + 1)}><IconChevron /></button>
         </div>
       </div>
-      <p className="lede mb-24">
+      <div className="mb-16">
+        <Intro>
         Months stand on their own everywhere else in RentTrack. This page is the one place they are added together:
         what each unit has been charged and has paid since January, and what is still outstanding.
-      </p>
+      </Intro>
+      </div>
 
       {t.monthsOpened === 0 ? (
         <div className="banner" role="note">
@@ -95,9 +101,9 @@ function CumulativeInner() {
       ) : (
         <>
           <dl className="kpis kpis-4">
-            <div className="kpi"><dt>Charged, {t.monthsOpened} month{t.monthsOpened === 1 ? "" : "s"}</dt><dd>{fmt(t.billed)}</dd></div>
-            <div className="kpi"><dt>Collected</dt><dd className="ok">{fmt(t.paid)}</dd></div>
-            <div className="kpi"><dt>Outstanding</dt><dd className={t.outstanding > 0 ? "owe" : "ok"}>{fmt(Math.max(t.outstanding, 0))}</dd></div>
+            <div className="kpi"><dt>Charged, {t.monthsOpened} month{t.monthsOpened === 1 ? "" : "s"}</dt><dd><Amt n={t.billed} /></dd></div>
+            <div className="kpi"><dt>Collected</dt><dd className="ok"><Amt n={t.paid} /></dd></div>
+            <div className="kpi"><dt>Outstanding</dt><dd className={t.outstanding > 0 ? "owe" : "ok"}><Amt n={Math.max(t.outstanding, 0)} /></dd></div>
             <div className="kpi"><dt>Units owing</dt><dd className={t.unitsOwing > 0 ? "owe" : "ok"}>{t.unitsOwing} of 34</dd></div>
           </dl>
 
@@ -124,10 +130,11 @@ function CumulativeInner() {
                   <input type="checkbox" checked={onlyOwing} onChange={(e) => setOnlyOwing(e.target.checked)} style={{ width: 20, height: 20, accentColor: "var(--brand)" }} />
                   <span>Only units that owe</span>
                 </label>
+                <DensityToggle value={density} onChange={setDensity} />
               </div>
             </div>
 
-            <div className="tbl-wrap cum-table">
+            <div className={`tbl-wrap cum-table tall ${density === "compact" ? "compact" : ""}`}>
               <table className="data">
                 <caption className="sr-only">Cumulative charges, payments and balance for each unit</caption>
                 <thead>

@@ -48,9 +48,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (phase === "loading") {
     return (
-      <main className="shell page" style={{ textAlign: "center", paddingTop: 96 }}>
-        <div className="brand-mark" style={{ margin: "0 auto 14px" }}><IconBuilding /></div>
-        <p className="muted" role="status">Opening the building…</p>
+      <main className="shell page" aria-busy="true" aria-live="polite">
+        <span className="sr-only" role="status">Opening the building…</span>
+        <div className="sk" style={{ height: 36, width: 220, marginBottom: 18 }} />
+        <div className="sk" style={{ height: 64, width: "min(360px, 80%)", marginBottom: 12 }} />
+        <div className="sk" style={{ height: 18, width: "min(520px, 95%)", marginBottom: 24 }} />
+        <div className="sk" style={{ height: 300, borderRadius: 18 }} />
       </main>
     );
   }

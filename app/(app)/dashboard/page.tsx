@@ -40,7 +40,7 @@ function DashboardPage() {
 
   return (
     <main className="shell page">
-      <div className="row between wrap gap-12 mb-16">
+      <div className="row between gap-12 mb-16" style={{ flexWrap: "nowrap" }}>
         <div className="month-nav" role="group" aria-label="Month">
           <button className="btn btn-line btn-icon" aria-label="Previous month" disabled={month === 0}
             onClick={() => { setMonth((m) => m - 1); setSelected(null); }}>
@@ -52,7 +52,7 @@ function DashboardPage() {
             <IconChevron />
           </button>
         </div>
-        <Link href="/collect" className="btn btn-primary"><IconCoins /> Collect rent</Link>
+        <Link href="/collect" className="btn btn-primary"><IconCoins /> <span className="hide-sm">Collect rent</span><span className="show-sm">Collect</span></Link>
       </div>
 
       <section className="hero" aria-label="Collection this month">

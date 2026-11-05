@@ -6,6 +6,8 @@ import { FLOORS, MONTHS, PROPERTY, TOTAL_UNITS, unitsForFloor, fmt } from "@/lib
 import { monthTotalsFull, floorTotalsFull, getActiveYear, hasMonthData, Totals } from "@/lib/store";
 import { SYNC_EVENT } from "@/lib/cloud";
 import AuthGuard from "@/components/AuthGuard";
+import Intro from "@/components/Intro";
+import Amt from "@/components/Amt";
 import { IconDownload } from "@/components/Icons";
 
 const EMPTY: Totals = {
@@ -61,9 +63,11 @@ function ReportsInner() {
           {MONTHS.map((m, i) => <option key={m} value={i}>{m} {year}</option>)}
         </select>
       </div>
-      <p className="lede mb-24">
+      <div className="mb-16">
+        <Intro>
         {PROPERTY.name}, {TOTAL_UNITS} units, paid by {PROPERTY.paymentMode}. Each month stands on its own; see Cumulative for running totals.
-      </p>
+      </Intro>
+      </div>
 
       {!billed ? (
         <div className="banner" role="note">
@@ -71,9 +75,9 @@ function ReportsInner() {
         </div>
       ) : (
         <dl className="kpis kpis-4">
-          <div className="kpi"><dt>Due this month</dt><dd>{fmt(gt.totalDue)}</dd></div>
-          <div className="kpi"><dt>Collected</dt><dd className="ok">{fmt(gt.paid)}</dd></div>
-          <div className="kpi"><dt>Outstanding</dt><dd className={gt.balance > 0 ? "owe" : "ok"}>{fmt(Math.max(gt.balance, 0))}</dd></div>
+          <div className="kpi"><dt>Due this month</dt><dd><Amt n={gt.totalDue} /></dd></div>
+          <div className="kpi"><dt>Collected</dt><dd className="ok"><Amt n={gt.paid} /></dd></div>
+          <div className="kpi"><dt>Outstanding</dt><dd className={gt.balance > 0 ? "owe" : "ok"}><Amt n={Math.max(gt.balance, 0)} /></dd></div>
           <div className="kpi"><dt>Collection rate</dt><dd className={gt.rate >= 80 ? "ok" : "owe"}>{gt.rate}%</dd></div>
         </dl>
       )}

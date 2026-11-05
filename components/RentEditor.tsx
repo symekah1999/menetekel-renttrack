@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FLOORS, MONTHS, fmt, unitsForFloor } from "@/lib/config";
 import { RentMap, currentRents, rentKey, setRentsFrom, totalRent } from "@/lib/rents";
 import { IconCheck, IconInfo } from "./Icons";
+import Fold from "./Fold";
 
 /** Edit every unit's rent, and choose the month the change starts from. */
 export default function RentEditor({ year, onDone }: { year: number; onDone: (msg: string) => void }) {
@@ -50,8 +51,7 @@ export default function RentEditor({ year, onDone }: { year: number; onDone: (ms
   }
 
   return (
-    <section className="card mb-16" aria-labelledby="rents">
-      <h2 className="h2 mb-8" id="rents">Rents</h2>
+    <Fold id="rents" title="Rents" hint="Set each unit's monthly rent">
       <p className="muted mb-16">
         Set the monthly rent for each unit. The change starts from the month you pick; earlier months keep the rent they had.
       </p>
@@ -93,6 +93,6 @@ export default function RentEditor({ year, onDone }: { year: number; onDone: (ms
       <button className="btn btn-primary" onClick={save} disabled={changedKeys.length === 0 || invalid}>
         <IconCheck /> Save {changedKeys.length > 0 ? `${changedKeys.length} change${changedKeys.length === 1 ? "" : "s"}` : "rents"}
       </button>
-    </section>
+    </Fold>
   );
 }

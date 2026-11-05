@@ -21,7 +21,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          // Apply a saved Light/Dark choice before first paint, so the page never flashes the wrong theme.
+          dangerouslySetInnerHTML={{
+            __html: "try{var t=localStorage.getItem('menetekel:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}",
+          }}
+        />
+      </head>
       <body>
         <PwaRegister />
         {children}

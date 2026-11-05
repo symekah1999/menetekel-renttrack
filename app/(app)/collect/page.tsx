@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { FLOORS, MONTHS, fmt, unitsForFloor } from "@/lib/config";
+import { FLOORS, MONTHS, unitsForFloor } from "@/lib/config";
 import { Entry, saveMonth, blankMonth, getActiveYear, monthDue } from "@/lib/store";
 import { loadCumulative, earlierBalance } from "@/lib/cumulative";
 import { useMonth } from "@/lib/useMonth";
@@ -12,6 +12,9 @@ import { getSupabase, cloudConfigured } from "@/lib/supabase";
 import { pullPayments, addPayment } from "@/lib/cloud";
 import { Payment, findDuplicateReceipt, normalizeDate } from "@/lib/ledger";
 import AuthGuard from "@/components/AuthGuard";
+import Intro from "@/components/Intro";
+import Amt from "@/components/Amt";
+import DensityToggle, { useDensity } from "@/components/DensityToggle";
 import UnitPanel, { StkState } from "@/components/UnitPanel";
 import { IconUpload, IconCheck, IconAlert, IconX, IconChevron } from "@/components/Icons";
 
@@ -20,6 +23,7 @@ function CollectInner() {
   const [month, setMonth] = useState(now.getMonth());
   const [floor, setFloor] = useState(0);
   const [open, setOpen] = useState<{ floor: number; unit: string; prompt: boolean } | null>(null);
+  const [density, setDensity] = useDensity();
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [stk, setStk] = useState<StkState | null>(null);
   const mv = useMonth(month);
@@ -186,10 +190,12 @@ function CollectInner() {
           {savedAt && <span className="saved" role="status"><IconCheck /> Saved {savedAt}</span>}
         </div>
       </div>
-      <p className="lede mb-16">
+      <div className="mb-16">
+        <Intro>
         Tap a unit to take a payment, send an M-Pesa prompt or fix a tenant&apos;s details.
         Each month stands on its own: what is due is that month&apos;s rent and water. Running totals live on the Cumulative page.
-      </p>
+      </Intro>
+      </div>
 
       <div className="toolbar">
         <div className="row gap-8">
@@ -210,6 +216,7 @@ function CollectInner() {
             );
           })}
         </div>
+        <DensityToggle value={density} onChange={setDensity} />
       </div>
 
       {!mv.loaded ? null : !mv.billed ? (
@@ -236,7 +243,7 @@ function CollectInner() {
           )}
 
           {/* wide screens: a table you can type into */}
-          <div className="tbl-wrap desktop-only">
+          <div className={`tbl-wrap desktop-only ${density === "compact" ? "compact" : ""}`}>
             <table className="data" style={{ minWidth: 940 }}>
               <thead>
                 <tr>
@@ -288,38 +295,30 @@ function CollectInner() {
           </div>
 
           {/* phones: one card per unit */}
-          <div className="unit-cards">
-            {floorStates.map(({ e, s }) => {
-              const i = idx(e.floor, e.unit);
-              return (
-                <article key={e.unit} className={`ucard ${e.vacant ? "is-vacant" : ""}`}>
-                  <div className="ucard-head">
-                    <span className="u">{e.unit}</span>
-                    <span className={`pill pill-${s.status}`}>{STATUS_LABEL[s.status]}</span>
-                  </div>
-                  <div className="ucard-edit">
-                    <label className="field"><span>Tenant</span>
-                      <input className="input" value={e.tenant} disabled={e.vacant} placeholder="Name" onChange={(ev) => patch(i, { tenant: ev.target.value })} /></label>
-                    <label className="field"><span>Phone</span>
-                      <input className="input" inputMode="tel" value={e.phone} disabled={e.vacant} placeholder="07XX XXX XXX" onChange={(ev) => patch(i, { phone: ev.target.value })} /></label>
-                  </div>
-                  <dl className="ucard-figs">
-                    <div><dt>Due</dt><dd>{s.due.toLocaleString()}</dd></div>
-                    <div><dt>Paid</dt><dd className="ok">{s.paid.toLocaleString()}</dd></div>
-                    <div><dt>{s.balance < 0 ? "Overpaid" : "Balance"}</dt><dd className={s.balance > 0 ? "owe" : ""}>{e.vacant ? "—" : Math.abs(s.balance).toLocaleString()}</dd></div>
-                  </dl>
-                  <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => setOpen({ floor: e.floor, unit: e.unit, prompt: false })}>
-                    Payments and tools
-                  </button>
-                </article>
-              );
-            })}
+          <div className="urows" role="list">
+            {floorStates.map(({ e, s }) => (
+              <button key={e.unit} type="button" role="listitem" className={`urow ${e.vacant ? "is-vacant" : ""}`}
+                onClick={() => setOpen({ floor: e.floor, unit: e.unit, prompt: false })}
+                aria-label={`${e.unit}, ${e.vacant ? "vacant" : e.tenant || "no tenant name yet"}, ${STATUS_LABEL[s.status]}${s.balance > 0 && !e.vacant ? `, owes ${s.balance.toLocaleString()} shillings` : ""}. Open payments and details`}>
+                <span className={`pill pill-${s.status}`}>{e.unit.replace(/^Unit\s*/i, "")}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span className="nm" style={{ display: "block" }}>{e.vacant ? "Vacant" : e.tenant || "No name yet"}</span>
+                  <span className="sub" style={{ display: "block" }}>
+                    {STATUS_LABEL[s.status]}{!e.vacant && s.paid > 0 ? (s.status === "paid" ? ` · ${s.paid.toLocaleString()}` : ` · ${s.paid.toLocaleString()} so far`) : ""}
+                  </span>
+                </span>
+                <span className={`bal ${s.balance > 0 ? "owe" : "ok"}`}>
+                  {e.vacant ? "—" : s.balance > 0 ? s.balance.toLocaleString() : s.balance < 0 ? `+${(-s.balance).toLocaleString()}` : "✓"}
+                </span>
+                <IconChevron aria-hidden />
+              </button>
+            ))}
           </div>
 
           <dl className="sumbar">
-            <div><dt>Due this month</dt><dd>{fmt(floorTotals.due)}</dd></div>
-            <div><dt>Collected</dt><dd className="ok">{fmt(floorTotals.paid)}</dd></div>
-            <div><dt>Outstanding</dt><dd className={floorTotals.balance > 0 ? "owe" : "ok"}>{fmt(Math.max(floorTotals.balance, 0))}</dd></div>
+            <div><dt>Due this month</dt><dd><Amt n={floorTotals.due} /></dd></div>
+            <div><dt>Collected</dt><dd className="ok"><Amt n={floorTotals.paid} /></dd></div>
+            <div><dt>Outstanding</dt><dd className={floorTotals.balance > 0 ? "owe" : "ok"}><Amt n={Math.max(floorTotals.balance, 0)} /></dd></div>
             <div><dt>Rate</dt><dd className={floorTotals.rate >= 80 ? "ok" : "owe"}>{floorTotals.rate}%</dd></div>
             <div><dt>Units clear</dt><dd>{floorTotals.clear}/{total}</dd></div>
           </dl>
