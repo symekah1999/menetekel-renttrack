@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.vercel.menetekel_renttrack.twa",
+    "sha256_cert_fingerprints": ["2B:3A:B7:B0:99:AC:1F:31:F0:E8:A9:F2:CD:13:61:3C:48:CD:31:8A:B1:99:36:D3:88:CE:D3:4C:D3:C6:9A:D9"]
+  }
+}]
