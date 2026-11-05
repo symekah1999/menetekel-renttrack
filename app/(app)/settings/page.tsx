@@ -9,6 +9,7 @@ import { loadDemoData } from "@/lib/demo";
 import AuthGuard from "@/components/AuthGuard";
 import { IconDownload, IconUpload, IconCheck } from "@/components/Icons";
 import RentEditor from "@/components/RentEditor";
+import AccountCard from "@/components/AccountCard";
 
 const YEARS = [2025, 2026, 2027, 2028, 2029, 2030];
 
@@ -94,6 +95,8 @@ function SettingsPageInner() {
           <button className="x" aria-label="Dismiss" onClick={() => setMsg(null)}>✕</button>
         </div>
       )}
+
+      <AccountCard />
 
       {cloudConfigured() && me?.role === "owner" && (
         <section className="card mb-16" aria-labelledby="team">
