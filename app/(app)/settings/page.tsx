@@ -1,16 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  PROPERTY, FLOOR0_UNITS, FLOOR14_UNITS,
-  FLOOR0_TOTAL, FLOOR14_TOTAL, GRAND_TOTAL, fmt,
-} from "@/lib/config";
+import { PROPERTY } from "@/lib/config";
 import { getActiveYear, setActiveYear, exportBackup, importBackup } from "@/lib/store";
 import { cloudConfigured } from "@/lib/supabase";
 import { getMyProfile, listProfiles, setApproved, pushAllLocal, Profile } from "@/lib/cloud";
 import { loadDemoData } from "@/lib/demo";
 import AuthGuard from "@/components/AuthGuard";
-import { IconDownload, IconUpload, IconInfo, IconCheck } from "@/components/Icons";
+import { IconDownload, IconUpload, IconCheck } from "@/components/Icons";
+import RentEditor from "@/components/RentEditor";
 
 const YEARS = [2025, 2026, 2027, 2028, 2029, 2030];
 
@@ -87,8 +85,7 @@ function SettingsPageInner() {
     <main className="shell page" style={{ maxWidth: 780 }}>
       <h1 className="h1 mb-8">Settings</h1>
       <p className="lede mb-24">
-        Accounts, backups and the rent schedule. Rents are set in <code>lib/config.ts</code>;
-        change them there and redeploy.
+        Accounts, backups and rents. Change any unit&apos;s rent below, from the month you choose.
       </p>
 
       {msg && (
@@ -189,36 +186,7 @@ function SettingsPageInner() {
         ))}
       </section>
 
-      <section className="card mb-16" aria-labelledby="rent0">
-        <h2 className="h2 mb-8" id="rent0">Rent schedule, floor 0</h2>
-        <p className="muted small mb-12">Units 6 and 7 are one merged unit at KSh 7,500.</p>
-        <div className="rentgrid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-          {FLOOR0_UNITS.map((u) => (
-            <div key={u.label} className={`rentbox ${u.merged ? "merged" : ""}`}>
-              <div className="u">{u.label}{u.merged ? ", merged" : ""}</div>
-              <div className="r">{u.rent.toLocaleString()}</div>
-            </div>
-          ))}
-        </div>
-        <p className="mt-12 small muted">Floor 0 total <b className="ok">{fmt(FLOOR0_TOTAL)}</b> a month</p>
-      </section>
-
-      <section className="card" aria-labelledby="rent14">
-        <h2 className="h2 mb-8" id="rent14">Rent schedule, floors 1 to 4</h2>
-        <p className="muted small mb-12">Seven units on each floor.</p>
-        <div className="rentgrid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}>
-          {FLOOR14_UNITS.map((u) => (
-            <div key={u.label} className="rentbox">
-              <div className="u">{u.label}</div>
-              <div className="r">{u.rent.toLocaleString()}</div>
-            </div>
-          ))}
-        </div>
-        <p className="mt-12 small muted">
-          Per floor <b className="ok">{fmt(FLOOR14_TOTAL)}</b>. Whole building <b className="ok">{fmt(GRAND_TOTAL)}</b> a month.
-        </p>
-        <p className="faint small mt-8" style={{ display: "flex", gap: 8 }}><IconInfo width={16} height={16} /> These figures are added up from the rents above, so they always match what the building is set to charge.</p>
-      </section>
+      <RentEditor key={year} year={year} onDone={setMsg} />
     </main>
   );
 }

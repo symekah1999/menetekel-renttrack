@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { MONTHS, PROPERTY, TOTAL_UNITS, GRAND_TOTAL, fmt } from "@/lib/config";
+import { MONTHS, PROPERTY, TOTAL_UNITS, fmt } from "@/lib/config";
+import { currentRents, totalRent } from "@/lib/rents";
 import { getActiveYear, whatsAppLink } from "@/lib/store";
 import { useMonth } from "@/lib/useMonth";
 import { unitState, STATUS_LABEL } from "@/lib/status";
@@ -70,7 +71,7 @@ function DashboardPage() {
           <>
             <div className="display-num" style={{ color: "var(--ink-3)" }}>Not started</div>
             <p className="lede">
-              Nothing has been recorded for {MONTHS[month]} yet. A full month is {fmt(GRAND_TOTAL)} across {TOTAL_UNITS} units,
+              Nothing has been recorded for {MONTHS[month]} yet. A full month is {fmt(totalRent(currentRents(year, month)))} across {TOTAL_UNITS} units,
               due on the {PROPERTY.dueDay}th. <Link href={`/collect?month=${month}`} className="inline-link">Open the month</Link> to begin.
             </p>
           </>

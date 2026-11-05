@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GRAND_TOTAL, TOTAL_UNITS, fmt } from "@/lib/config";
+import { TOTAL_UNITS } from "@/lib/config";
 import FacadeArt from "@/components/FacadeArt";
 import { IconArrowRight, IconBuilding, IconCoins, IconPhone, IconReceipt } from "@/components/Icons";
 
@@ -54,7 +54,7 @@ export default function IntroPage() {
               <Link href="/dashboard" className="btn btn-primary">Open the app <IconArrowRight /></Link>
               <a href="#how" className="btn btn-line">How a month works</a>
             </div>
-            <p className="lp-facts">{fmt(GRAND_TOTAL)} a month when every unit is let.</p>
+            <p className="lp-facts">{TOTAL_UNITS} homes on five floors, rent due on the 5th.</p>
           </div>
           <FacadeArt />
         </section>

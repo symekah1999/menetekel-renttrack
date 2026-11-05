@@ -261,7 +261,10 @@ function CollectInner() {
                         <input className="cell-input" aria-label={`${e.unit} phone`} inputMode="tel" value={e.phone} placeholder="07XX XXX XXX" disabled={e.vacant}
                           onChange={(ev) => patch(i, { phone: ev.target.value })} />
                       </td>
-                      <td className="right num">{e.vacant ? "—" : e.rent.toLocaleString()}</td>
+                      <td style={{ minWidth: 100 }}>
+                        <input className="cell-input right" aria-label={`${e.unit} monthly rent`} inputMode="numeric" value={e.rent || ""} placeholder="0" disabled={e.vacant}
+                          onChange={(ev) => patch(i, { rent: Number(ev.target.value.replace(/\D/g, "")) || 0 })} />
+                      </td>
                       <td style={{ minWidth: 96 }}>
                         <input className="cell-input right" aria-label={`${e.unit} water and other charges`} inputMode="numeric" value={e.water || ""} placeholder="0" disabled={e.vacant}
                           onChange={(ev) => patch(i, { water: Number(ev.target.value.replace(/\D/g, "")) || 0 })} />

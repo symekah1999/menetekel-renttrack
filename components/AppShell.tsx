@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getSupabase, cloudConfigured } from "@/lib/supabase";
-import { IconBuilding, IconCoins, IconChart, IconGear, IconLayers, IconGrid } from "./Icons";
+import { IconBuilding, IconCoins, IconChart, IconGear, IconLayers, IconGrid, IconUsers } from "./Icons";
 import SyncStatus from "./SyncStatus";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard", Icon: IconGrid, hint: "The building this month" },
+  { href: "/tenants", label: "Tenants", Icon: IconUsers, hint: "Profiles, unit by unit" },
   { href: "/collect", label: "Collect rent", Icon: IconCoins, hint: "Payments, unit by unit" },
   { href: "/cumulative", label: "Cumulative", Icon: IconLayers, hint: "Running totals for the year" },
   { href: "/reports", label: "Reports", Icon: IconChart, hint: "Monthly reports and downloads" },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { MONTHS } from "@/lib/config";
 import { EffEntry, Entry, whatsAppLink } from "@/lib/store";
 import {
@@ -248,14 +249,22 @@ export default function UnitPanel({
           <div className="stack gap-12">
             <label className="field"><span>Tenant name</span>
               <input className="input" value={entry.tenant} disabled={entry.vacant} onChange={(e) => onPatch({ tenant: e.target.value })} /></label>
+            <p className="faint tiny" style={{ marginTop: -4 }}>
+              Edited here changes this month only. For a new tenant, or details that should carry forward, use{" "}
+              <Link href={`/tenants?month=${month}&floor=${entry.floor}&unit=${encodeURIComponent(entry.unit)}`} style={{ textDecoration: "underline" }}>Tenants</Link>.
+            </p>
             <div className="row gap-8 wrap">
               <label className="field grow" style={{ minWidth: 150 }}><span>Phone</span>
                 <input className="input" inputMode="tel" placeholder="07XX XXX XXX" value={entry.phone} disabled={entry.vacant}
                   onChange={(e) => onPatch({ phone: e.target.value })} /></label>
+              <label className="field" style={{ width: 120 }}><span>Rent</span>
+                <input className="input" inputMode="numeric" value={entry.rent || ""} disabled={entry.vacant}
+                  onChange={(e) => onPatch({ rent: Number(e.target.value.replace(/\D/g, "")) || 0 })} /></label>
               <label className="field" style={{ width: 130 }}><span>Water and other</span>
                 <input className="input" inputMode="numeric" value={entry.water || ""} disabled={entry.vacant}
                   onChange={(e) => onPatch({ water: Number(e.target.value.replace(/\D/g, "")) || 0 })} /></label>
             </div>
+            <p className="faint tiny">Rent edited here changes this month only. To change it from a month onward, use Settings.</p>
             <label className="row gap-8" style={{ cursor: "pointer" }}>
               <input type="checkbox" checked={entry.vacant} style={{ width: 20, height: 20, accentColor: "var(--brand)" }}
                 onChange={(e) => onPatch({ vacant: e.target.checked })} />
