@@ -101,7 +101,7 @@ function CumulativeInner() {
         </div>
       ) : (
         <>
-          <dl className="kpis kpis-4">
+          <dl className="kpis kpis-4 stagger">
             <div className="kpi"><dt>Charged, {t.monthsOpened} month{t.monthsOpened === 1 ? "" : "s"}</dt><dd><Amt n={t.billed} /></dd></div>
             <div className="kpi"><dt>Collected</dt><dd className="ok"><Amt n={t.paid} /></dd></div>
             <div className="kpi"><dt>Outstanding</dt><dd className={t.outstanding > 0 ? "owe" : "ok"}><Amt n={Math.max(t.outstanding, 0)} /></dd></div>

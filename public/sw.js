@@ -1,4 +1,4 @@
-const CACHE = "menetekel-v11";
+const CACHE = "menetekel-v12";
 const PRECACHE = ["/", "/dashboard", "/tenants", "/collect", "/cumulative", "/reports", "/settings", "/login"];
 
 self.addEventListener("install", (event) => {

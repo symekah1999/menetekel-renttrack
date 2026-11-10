@@ -74,7 +74,7 @@ function ReportsInner() {
           <span>{MONTHS[month]} hasn&apos;t been opened, so there is nothing to report yet. Open it from <Link href="/collect" style={{ textDecoration: "underline" }}>Collect rent</Link>.</span>
         </div>
       ) : (
-        <dl className="kpis kpis-4">
+        <dl className="kpis kpis-4 stagger">
           <div className="kpi"><dt>Due this month</dt><dd><Amt n={gt.totalDue} /></dd></div>
           <div className="kpi"><dt>Collected</dt><dd className="ok"><Amt n={gt.paid} /></dd></div>
           <div className="kpi"><dt>Outstanding</dt><dd className={gt.balance > 0 ? "owe" : "ok"}><Amt n={Math.max(gt.balance, 0)} /></dd></div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MONTHS, PROPERTY, TOTAL_UNITS, fmt } from "@/lib/config";
 import { currentRents, totalRent } from "@/lib/rents";
@@ -13,8 +14,13 @@ import { loadCumulative, earlierBalance } from "@/lib/cumulative";
 import AuthGuard from "@/components/AuthGuard";
 import Building, { unitId } from "@/components/Building";
 import Scene from "@/components/Scene";
-import MonthReview from "@/components/MonthReview";
-import { IconChevron, IconChat, IconPhone, IconCoins, IconX, IconArrowRight, IconPlay } from "@/components/Icons";
+import RateRing from "@/components/RateRing";
+import { dueState } from "@/lib/due";
+import { latestPayments } from "@/lib/activity";
+
+// The review is only downloaded when someone opens it.
+const MonthReview = dynamic(() => import("@/components/MonthReview"), { ssr: false });
+import { IconChevron, IconChat, IconPhone, IconCoins, IconX, IconArrowRight, IconPlay, IconClock } from "@/components/Icons";
 
 function DashboardPage() {
   const now = new Date();
@@ -31,6 +37,13 @@ function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Opened from search ("Month in review"): show it once the month has loaded.
+  const [wantReview, setWantReview] = useState(false);
+  useEffect(() => { setWantReview(new URLSearchParams(window.location.search).get("review") === "1"); }, []);
+  useEffect(() => {
+    if (wantReview && mv.loaded && mv.billed) { setReviewOpen(true); setWantReview(false); }
+  }, [wantReview, mv.loaded, mv.billed]);
+
   const states = useMemo(
     () => mv.eff.map((e) => ({ e, s: unitState(e, mv.billed) })),
     [mv.eff, mv.billed]
@@ -46,6 +59,7 @@ function DashboardPage() {
   const earlier = sel && cum ? earlierBalance(cum, sel.e.floor, sel.e.unit, month) : 0;
 
   const shownPaid = useCountUp(t.paid, calm);
+  const recent = useMemo(() => latestPayments(mv.payments, 5), [mv.payments]);
   const hot = usePaidPulse(Object.fromEntries(mv.eff.map((e) => [unitId(e.floor, e.unit), e.paid])), `${mv.year}-${month}`, calm);
   const previousRate = useMemo(
     () => (mv.loaded && month > 0 && hasMonthData(month - 1, mv.year) ? monthTotalsFull(month - 1, mv.year).rate : null),
@@ -82,29 +96,38 @@ function DashboardPage() {
         <Link href="/collect" className="btn btn-primary"><IconCoins /> <span className="hide-sm">Collect rent</span><span className="show-sm">Collect</span></Link>
       </div>
 
-      <section className="hero" aria-label="Collection this month">
+      <section className={`hero-card ${mv.billed ? "" : "is-empty"}`} aria-label="Collection this month">
         {mv.billed ? (
           <>
-            <div className="display-num" aria-label={`KSh ${t.paid.toLocaleString()}`}><small aria-hidden>KSh</small><span aria-hidden>{shownPaid.toLocaleString()}</span></div>
-            <p className="lede">
-              collected of {fmt(t.totalDue)} due this month, <b>{t.rate}%</b>.{" "}
-              {t.fullyPaid} of {t.occupied} occupied units are clear.
+            <div className="hero-main">
+              {(() => { const d = dueState(year, month, PROPERTY.dueDay); return (
+                <span className={`due-chip due-${d.kind}`}><IconClock width={15} height={15} /> {d.label}</span>
+              ); })()}
+              <div className="display-num" aria-label={`KSh ${t.paid.toLocaleString()} collected`}><small aria-hidden>KSh</small><span aria-hidden>{shownPaid.toLocaleString()}</span></div>
+              <p className="hero-sub">
+                collected of {fmt(t.totalDue)} due · {t.fullyPaid} of {t.occupied} occupied units clear
+              </p>
               {cum && cum.totals.outstanding > 0 && (
-                <> Across {MONTHS[0]} to {MONTHS[month]}, <Link href="/cumulative" className="inline-link">{fmt(cum.totals.outstanding)} is still outstanding</Link>.</>
+                <p className="hero-sub soft">
+                  Across {MONTHS[0]} to {MONTHS[month]}, <Link href="/cumulative" className="hero-link">{fmt(cum.totals.outstanding)} is still outstanding</Link>.
+                </p>
               )}
-            </p>
-            <div>
-              <button className="btn btn-soft btn-sm mt-8" onClick={() => setReviewOpen(true)}><IconPlay width={16} height={16} /> Month in review</button>
+              <div className="hero-actions">
+                <button className="btn btn-glass btn-sm" onClick={() => setReviewOpen(true)}><IconPlay width={16} height={16} /> Month in review</button>
+                <Link href="/activity" className="btn btn-glass btn-sm only-wide">Recent payments</Link>
+              </div>
             </div>
+            <RateRing value={t.rate} calm={calm} />
           </>
         ) : (
-          <>
-            <div className="display-num" style={{ color: "var(--ink-3)" }}>Not started</div>
-            <p className="lede">
-              Nothing has been recorded for {MONTHS[month]} yet. A full month is {fmt(totalRent(currentRents(year, month)))} across {TOTAL_UNITS} units,
-              due on the {PROPERTY.dueDay}th. <Link href={`/collect?month=${month}`} className="inline-link">Open the month</Link> to begin.
+          <div className="hero-main">
+            <span className="due-chip"><IconClock width={15} height={15} /> Due on the {PROPERTY.dueDay}th</span>
+            <div className="display-num">Not started</div>
+            <p className="hero-sub">
+              Nothing has been recorded for {MONTHS[month]} yet. A full month is {fmt(totalRent(currentRents(year, month)))} across {TOTAL_UNITS} units.
             </p>
-          </>
+            <div className="hero-actions"><Link href={`/collect?month=${month}`} className="btn btn-glass btn-sm">Open {MONTHS[month]}</Link></div>
+          </div>
         )}
       </section>
 
@@ -190,6 +213,32 @@ function DashboardPage() {
           )}
         </aside>
       </div>
+
+      {recent.length > 0 && (
+        <section className="card mt-16 recent" aria-labelledby="recent-h">
+          <div className="row between wrap gap-8 mb-8">
+            <h2 className="h2" id="recent-h">Recent payments</h2>
+            <Link href="/activity" className="inline-link">See all activity</Link>
+          </div>
+          <ul className="recent-list">
+            {recent.map((p) => {
+              const e = mv.eff.find((r) => r.floor === p.floor && r.unit === p.unit);
+              return (
+                <li key={p.id}>
+                  <Link href={`/collect?month=${p.month}&floor=${p.floor}&unit=${encodeURIComponent(p.unit)}`} className="recent-row">
+                    <span className="recent-dot" data-src={p.source} aria-hidden />
+                    <span className="recent-main">
+                      <span className="strong">{(p.month === month && e?.tenant) || `Floor ${p.floor}, ${p.unit}`}</span>
+                      <span className="faint small">Floor {p.floor}, {p.unit} · {p.paidOn} · {p.source === "stk" ? "M-Pesa prompt" : p.source === "csv" ? "Statement" : p.source === "reversal" ? "Reversal" : "By hand"}</span>
+                    </span>
+                    <span className={`recent-amt ${p.amount < 0 ? "owe" : "ok"}`}>{p.amount < 0 ? "−" : "+"}{Math.abs(p.amount).toLocaleString()}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
       {reviewOpen && (
         <MonthReview year={mv.year} month={month} rows={mv.eff} payments={mv.payments.filter((p) => p.month === month)}
           dueDay={PROPERTY.dueDay} previousRate={previousRate} onClose={() => setReviewOpen(false)} />

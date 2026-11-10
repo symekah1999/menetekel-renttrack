@@ -96,3 +96,15 @@ export const IconPause = (p: P) => (
 export const IconShare = (p: P) => (
   <svg {...base(p)}><path d="M12 15V4M8 8l4-4 4 4" /><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" /></svg>
 );
+export const IconSearch = (p: P) => (
+  <svg {...base(p)}><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></svg>
+);
+export const IconActivity = (p: P) => (
+  <svg {...base(p)}><path d="M3 12h4l2.5-6 5 12 2.5-6H21" /></svg>
+);
+export const IconClock = (p: P) => (
+  <svg {...base(p)}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
+);
+export const IconSparkle = (p: P) => (
+  <svg {...base(p)}><path d="M12 3.5 13.8 10 20.5 12l-6.7 2-1.8 6.5L10.2 14 3.5 12l6.7-2Z" /></svg>
+);

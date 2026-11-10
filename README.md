@@ -58,6 +58,19 @@ month before, so a change carries forward by itself. `lib/config.ts` only suppli
 for the very first month. A single month's rent can also be edited on Collect rent, and that
 changes only that month.
 
+## Finding things fast
+
+- **Search (Ctrl+K, Cmd+K or /):** jump to any page, unit or tenant. It understands the building:
+  "floor 2 unit 5" opens exactly that unit, a tenant's name or part of a phone number finds them,
+  and actions such as "Month in review" run straight away. On phones it is the search button at
+  the top.
+- **Activity:** every payment of the year as a feed, grouped by day, with filters for M-Pesa
+  prompts, payments entered by hand, statement imports and reversals.
+- **Dashboard hero:** collected so far, a ring showing the collection rate, a countdown to the
+  due date, and the latest payments underneath.
+
+Heavy pieces (the unit panels, the month review and search) load only when first opened.
+
 ## The living building
 
 The dashboard puts the building in Nairobi: the sky follows Nairobi time (dawn, day, dusk, night),

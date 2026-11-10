@@ -7,7 +7,9 @@ import { SYNC_EVENT } from "@/lib/cloud";
 import { missingDetails, openedMonths, tenantsAsOf, unitId } from "@/lib/tenants";
 import AuthGuard from "@/components/AuthGuard";
 import Intro from "@/components/Intro";
-import TenantPanel from "@/components/TenantPanel";
+import dynamic from "next/dynamic";
+
+const TenantPanel = dynamic(() => import("@/components/TenantPanel"), { ssr: false });
 import { IconCheck, IconPhone } from "@/components/Icons";
 
 const initials = (name: string) =>
@@ -103,7 +105,7 @@ function TenantsInner() {
         </div>
       )}
 
-      <dl className="tstats">
+      <dl className="tstats stagger">
         <div className="kpi"><dt><span className="hide-sm">Tenants on record</span><span className="show-sm">Tenants</span></dt><dd>{stats.tenants}</dd></div>
         <div className="kpi"><dt><span className="hide-sm">Vacant units</span><span className="show-sm">Vacant</span></dt><dd>{stats.vacant}</dd></div>
         <div className="kpi"><dt><span className="hide-sm">No name yet</span><span className="show-sm">No name</span></dt><dd className={stats.noName ? "owe" : ""}>{stats.noName}</dd></div>

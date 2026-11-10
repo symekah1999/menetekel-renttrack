@@ -16,7 +16,11 @@ import Intro from "@/components/Intro";
 import Amt from "@/components/Amt";
 import { useCalm, usePaidPulse } from "@/lib/motion";
 import DensityToggle, { useDensity } from "@/components/DensityToggle";
-import UnitPanel, { StkState } from "@/components/UnitPanel";
+import type { StkState } from "@/components/UnitPanel";
+import dynamic from "next/dynamic";
+
+// The unit panel loads the first time a unit is opened.
+const UnitPanel = dynamic(() => import("@/components/UnitPanel"), { ssr: false });
 import { IconUpload, IconCheck, IconAlert, IconX, IconChevron } from "@/components/Icons";
 
 function CollectInner() {
