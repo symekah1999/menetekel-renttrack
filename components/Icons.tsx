@@ -87,3 +87,12 @@ export const IconShield = (p: P) => (
 export const IconUsers = (p: P) => (
   <svg {...base(p)}><circle cx="9" cy="8" r="3.2" /><path d="M2.8 20c.4-3.4 3-5.4 6.2-5.4s5.8 2 6.2 5.4" /><path d="M16.5 4.9a3.2 3.2 0 0 1 0 6.2M18 14.8c1.9.6 3.1 2.3 3.4 5.2" /></svg>
 );
+export const IconPlay = (p: P) => (
+  <svg {...base(p)}><path d="M7 4.5v15l12-7.5-12-7.5Z" /></svg>
+);
+export const IconPause = (p: P) => (
+  <svg {...base(p)}><path d="M8 5v14M16 5v14" /></svg>
+);
+export const IconShare = (p: P) => (
+  <svg {...base(p)}><path d="M12 15V4M8 8l4-4 4 4" /><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" /></svg>
+);

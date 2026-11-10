@@ -9,6 +9,7 @@ import { loadCumulative, UnitCumulative, MonthCell } from "@/lib/cumulative";
 import { STATUS_LABEL, compact } from "@/lib/status";
 import AuthGuard from "@/components/AuthGuard";
 import Intro from "@/components/Intro";
+import Timelapse from "@/components/Timelapse";
 import Amt from "@/components/Amt";
 import DensityToggle, { useDensity } from "@/components/DensityToggle";
 import { IconChat, IconChevron } from "@/components/Icons";
@@ -115,6 +116,8 @@ function CumulativeInner() {
             <p className="muted small mb-16">Charged so far {fmt(t.billed)}, collected {fmt(t.paid)}. A bar shrinks when tenants pay off earlier months.</p>
             <Outstanding series={cum.series} through={through} />
           </section>
+
+          <Timelapse through={through} />
 
           <section aria-labelledby="units">
             <div className="row between wrap gap-12 mb-12">

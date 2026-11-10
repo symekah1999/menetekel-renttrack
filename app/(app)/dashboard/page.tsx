@@ -1,22 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { MONTHS, PROPERTY, TOTAL_UNITS, fmt } from "@/lib/config";
 import { currentRents, totalRent } from "@/lib/rents";
-import { getActiveYear, whatsAppLink } from "@/lib/store";
+import { getActiveYear, whatsAppLink, hasMonthData, monthTotalsFull } from "@/lib/store";
+import { useCalm, useCountUp, usePaidPulse } from "@/lib/motion";
 import { useMonth } from "@/lib/useMonth";
 import { unitState, STATUS_LABEL } from "@/lib/status";
 import { loadCumulative, earlierBalance } from "@/lib/cumulative";
 import AuthGuard from "@/components/AuthGuard";
 import Building, { unitId } from "@/components/Building";
-import { IconChevron, IconChat, IconPhone, IconCoins, IconX, IconArrowRight } from "@/components/Icons";
+import Scene from "@/components/Scene";
+import MonthReview from "@/components/MonthReview";
+import { IconChevron, IconChat, IconPhone, IconCoins, IconX, IconArrowRight, IconPlay } from "@/components/Icons";
 
 function DashboardPage() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [selected, setSelected] = useState<string | null>(null);
   const mv = useMonth(month);
+  const calm = useCalm();
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [vt, setVt] = useState<string | null>(null);
 
   useEffect(() => {
     const y = getActiveYear();
@@ -38,6 +45,26 @@ function DashboardPage() {
   const year = mv.year || PROPERTY.year;
   const earlier = sel && cum ? earlierBalance(cum, sel.e.floor, sel.e.unit, month) : 0;
 
+  const shownPaid = useCountUp(t.paid, calm);
+  const hot = usePaidPulse(Object.fromEntries(mv.eff.map((e) => [unitId(e.floor, e.unit), e.paid])), `${mv.year}-${month}`, calm);
+  const previousRate = useMemo(
+    () => (mv.loaded && month > 0 && hasMonthData(month - 1, mv.year) ? monthTotalsFull(month - 1, mv.year).rate : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mv.loaded, month, mv.year, mv.eff]
+  );
+
+  // The tapped window grows into the unit card where the browser can animate it.
+  function choose(id: string) {
+    const next = selected === id ? null : id;
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+    if (!calm && next && typeof doc.startViewTransition === "function") {
+      flushSync(() => setVt(id));
+      doc.startViewTransition(() => { flushSync(() => { setSelected(next); setVt(null); }); });
+    } else {
+      setSelected(next);
+    }
+  }
+
   return (
     <main className="shell page">
       <div className="row between gap-12 mb-16" style={{ flexWrap: "nowrap" }}>
@@ -58,7 +85,7 @@ function DashboardPage() {
       <section className="hero" aria-label="Collection this month">
         {mv.billed ? (
           <>
-            <div className="display-num"><small>KSh</small>{t.paid.toLocaleString()}</div>
+            <div className="display-num" aria-label={`KSh ${t.paid.toLocaleString()}`}><small aria-hidden>KSh</small><span aria-hidden>{shownPaid.toLocaleString()}</span></div>
             <p className="lede">
               collected of {fmt(t.totalDue)} due this month, <b>{t.rate}%</b>.{" "}
               {t.fullyPaid} of {t.occupied} occupied units are clear.
@@ -66,6 +93,9 @@ function DashboardPage() {
                 <> Across {MONTHS[0]} to {MONTHS[month]}, <Link href="/cumulative" className="inline-link">{fmt(cum.totals.outstanding)} is still outstanding</Link>.</>
               )}
             </p>
+            <div>
+              <button className="btn btn-soft btn-sm mt-8" onClick={() => setReviewOpen(true)}><IconPlay width={16} height={16} /> Month in review</button>
+            </div>
           </>
         ) : (
           <>
@@ -79,10 +109,12 @@ function DashboardPage() {
       </section>
 
       <div className="home-grid">
-        <Building rows={mv.eff} billed={mv.billed} selected={selected}
-          onSelect={(id) => setSelected((s) => (s === id ? null : id))} />
+        <Scene>
+          <Building rows={mv.eff} billed={mv.billed} selected={selected} onSelect={choose}
+            animKey={`${mv.year}-${month}`} hot={hot} vtId={vt} />
+        </Scene>
 
-        <aside className="card side-card" aria-live="polite">
+        <aside className={`card side-card ${sel ? "vt-target" : ""}`} aria-live="polite">
           {sel ? (
             <>
               <div className="row between gap-8 mb-12">
@@ -158,6 +190,10 @@ function DashboardPage() {
           )}
         </aside>
       </div>
+      {reviewOpen && (
+        <MonthReview year={mv.year} month={month} rows={mv.eff} payments={mv.payments.filter((p) => p.month === month)}
+          dueDay={PROPERTY.dueDay} previousRate={previousRate} onClose={() => setReviewOpen(false)} />
+      )}
     </main>
   );
 }

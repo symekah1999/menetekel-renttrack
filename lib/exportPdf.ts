@@ -3,6 +3,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { MONTHS, PROPERTY, FLOORS, unitsForFloor, fmt } from "./config";
+import { unitState } from "./status";
 import {
   loadMonthEffective as loadMonth, monthTotalsFull, floorTotalsFull,
   monthDue, getActiveYear, Entry,
@@ -15,6 +16,105 @@ const RED: [number, number, number] = [191, 59, 59];
 const GREY: [number, number, number] = [110, 118, 130];
 
 type Doc = jsPDF & { lastAutoTable: { finalY: number } };
+
+/** A designed first page: the month's collection, and the building as it stood. */
+function drawCover(
+  doc: jsPDF, mi: number, year: number, data: ReturnType<typeof loadMonth>,
+  t: { paid: number; totalDue: number; rate: number; occupied: number }
+) {
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  const soft: [number, number, number] = [205, 196, 240];
+  doc.setFillColor(...NAVY);
+  doc.rect(0, 0, w, h, "F");
+  doc.setFillColor(155, 132, 230);
+  doc.rect(0, 0, w, 4, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...soft);
+  doc.text("MENETEKEL APARTMENTS  ·  NAIROBI", 20, 30);
+  doc.setFontSize(34);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`${MONTHS[mi]} ${year}`, 20, 48);
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...soft);
+  doc.text("Collection report", 20, 57);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(54);
+  doc.setTextColor(255, 255, 255);
+  doc.text(t.paid.toLocaleString(), 20, 92);
+  const numW = doc.getTextWidth(t.paid.toLocaleString());
+  doc.setFontSize(14);
+  doc.setTextColor(...soft);
+  doc.text("KSh collected", 20 + numW + 4, 92);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.text(`of KSh ${t.totalDue.toLocaleString()} due  ·  ${t.rate}% collected  ·  ${t.occupied} occupied units`, 20, 102);
+  doc.setFillColor(90, 70, 150);
+  doc.roundedRect(20, 108, w - 40, 3, 1.5, 1.5, "F");
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(20, 108, Math.max(3, ((w - 40) * Math.min(t.rate, 100)) / 100), 3, 1.5, 1.5, "F");
+
+  // the building
+  const px = 20, py = 124, pw = w - 40, rowH = 20, labelW = 12, gap = 2.4;
+  doc.setFillColor(26, 20, 60);
+  doc.roundedRect(px, py, pw, rowH * 5 + 16, 3, 3, "F");
+  doc.setFillColor(155, 132, 230);
+  doc.rect(px, py, pw, 2.2, "F");
+  const cellW = (pw - labelW - 12 - gap * 6) / 7;
+  const byKey = new Map(data.map((e) => [`${e.floor}|${e.unit}`, e]));
+  const tone = { paid: [76, 199, 154], part: [233, 166, 42], owe: [240, 133, 133], vacant: [109, 103, 144], none: [109, 103, 144] } as const;
+  [...FLOORS].reverse().forEach((f, ri) => {
+    const y = py + 9 + ri * rowH;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(150, 140, 190);
+    doc.text(String(f), px + 6, y + 10.5, { align: "center" });
+    let col = 0;
+    for (const u of unitsForFloor(f)) {
+      const span = u.merged ? 2 : 1;
+      const x = px + labelW + 6 + col * (cellW + gap);
+      const cw = cellW * span + gap * (span - 1);
+      const e = byKey.get(`${f}|${u.label}`);
+      const st = e ? unitState(e, true) : null;
+      const status = st?.status ?? "none";
+      const [r, g, b] = tone[status];
+      const ch = rowH - 4;
+      if (status === "paid" || status === "part") {
+        const fh = (ch * (st?.fill ?? 0)) / 100;
+        doc.setFillColor(r, g, b);
+        doc.roundedRect(x, y + ch - fh, cw, fh, 1.2, 1.2, "F");
+      }
+      doc.setDrawColor(r, g, b);
+      doc.setLineWidth(0.5);
+      if (status === "vacant") doc.setLineDashPattern([1.2, 1], 0);
+      doc.roundedRect(x, y, cw, ch, 1.6, 1.6, "S");
+      doc.setLineDashPattern([], 0);
+      col += span;
+    }
+  });
+
+  // legend
+  const legend: [string, readonly [number, number, number]][] = [["Paid", tone.paid], ["Part-paid", tone.part], ["Owing", tone.owe], ["Vacant", tone.vacant]];
+  let lx = 20;
+  const ly = py + rowH * 5 + 28;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  for (const [label, [r, g, b]] of legend) {
+    doc.setFillColor(r, g, b);
+    doc.roundedRect(lx, ly - 3.2, 4, 4, 1, 1, "F");
+    doc.setTextColor(...soft);
+    doc.text(label, lx + 6, ly);
+    lx += 6 + doc.getTextWidth(label) + 10;
+  }
+  doc.setFontSize(9);
+  doc.setTextColor(150, 140, 190);
+  doc.text("Floor 4 is at the top. Part-paid windows fill as rent arrives.", 20, h - 22);
+  doc.text("Rent collected with RentTrack", 20, h - 16);
+}
 
 function header(doc: jsPDF, title: string, subtitle: string) {
   const w = doc.internal.pageSize.getWidth();
@@ -60,11 +160,13 @@ function kpiBoxes(
   return y + 24;
 }
 
-function footer(doc: jsPDF) {
+function footer(doc: jsPDF, hasCover = false) {
   const pages = doc.getNumberOfPages();
+  const first = hasCover ? 2 : 1; // a cover page carries no footer or number
+  const total = hasCover ? pages - 1 : pages;
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
-  for (let p = 1; p <= pages; p++) {
+  for (let p = first; p <= pages; p++) {
     doc.setPage(p);
     doc.setDrawColor(...GOLD);
     doc.setLineWidth(0.4);
@@ -73,7 +175,7 @@ function footer(doc: jsPDF) {
     doc.setFontSize(7.5);
     doc.setTextColor(...GREY);
     doc.text(`${PROPERTY.name} · ${PROPERTY.location} · Manager: ${PROPERTY.manager}`, 12, h - 9);
-    doc.text(`Page ${p} of ${pages} · Generated ${new Date().toLocaleDateString("en-GB")}`, w - 12, h - 9, { align: "right" });
+    doc.text(`Page ${p - first + 1} of ${total} · Generated ${new Date().toLocaleDateString("en-GB")}`, w - 12, h - 9, { align: "right" });
   }
 }
 
@@ -120,6 +222,9 @@ export function downloadMonthPdf(mi: number) {
   const data = loadMonth(mi, year);
   const gt = monthTotalsFull(mi, year);
   const doc = new jsPDF() as Doc;
+
+  drawCover(doc, mi, year, data, gt);
+  doc.addPage();
 
   header(doc, `${PROPERTY.name} — Collection Report`,
     `${MONTHS[mi]} ${year} · 5 floors · 34 units · ${PROPERTY.paymentMode} · Due ${PROPERTY.dueDay}th`);
@@ -172,7 +277,7 @@ export function downloadMonthPdf(mi: number) {
   }
 
   signatureBlock(doc, doc.lastAutoTable.finalY + 6);
-  footer(doc);
+  footer(doc, true);
   doc.save(`Menetekel_Report_${MONTHS[mi]}_${year}.pdf`);
 }
 

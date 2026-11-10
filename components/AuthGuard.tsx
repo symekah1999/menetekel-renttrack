@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { getSupabase, cloudConfigured } from "@/lib/supabase";
 import { getMyProfile, pullYears, pullPayments, flushDirty, flushPayments } from "@/lib/cloud";
 import { getActiveYear } from "@/lib/store";
-import { IconBuilding, IconInfo } from "./Icons";
+import { IconInfo } from "./Icons";
+import LaunchMark from "./LaunchMark";
 
 type Phase = "loading" | "local" | "unapproved" | "ready";
 
@@ -13,11 +14,24 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("loading");
   const [email, setEmail] = useState("");
+  // The building draws itself the first time the app opens in a session; later pages just fade in.
+  // Decided after mount (never while hydrating), so the server and browser agree on the first paint.
+  const [intro, setIntro] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    let play = false;
+    try {
+      if (!sessionStorage.getItem("menetekel:launched")) {
+        sessionStorage.setItem("menetekel:launched", "1");
+        play = !window.matchMedia("(prefers-reduced-motion: reduce)").matches && localStorage.getItem("menetekel:calm") !== "1";
+      }
+    } catch { /* storage blocked: skip the intro */ }
+    if (play) setIntro(true);
+    const hold = new Promise<void>((ok) => setTimeout(ok, play ? 1800 : 0));
     async function boot() {
       if (!cloudConfigured()) {
+        await hold;
         if (!cancelled) setPhase("local");
         return;
       }
@@ -40,11 +54,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       await flushDirty();
       await flushPayments([y - 1, y]);
       await Promise.all([pullYears([y - 1, y]), pullPayments([y - 1, y])]);
+      await hold;
       if (!cancelled) setPhase("ready");
     }
     boot();
     return () => { cancelled = true; };
   }, [router]);
+
+  if (phase === "loading" && intro) return <LaunchMark />;
 
   if (phase === "loading") {
     return (

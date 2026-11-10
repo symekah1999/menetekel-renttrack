@@ -13,6 +13,7 @@ import AccountCard from "@/components/AccountCard";
 import Fold from "@/components/Fold";
 import Intro from "@/components/Intro";
 import ThemeSwitch from "@/components/ThemeSwitch";
+import CalmSwitch from "@/components/CalmSwitch";
 
 const YEARS = [2025, 2026, 2027, 2028, 2029, 2030];
 
@@ -153,9 +154,11 @@ function SettingsPageInner() {
         </div>
       </Fold>
 
-      <Fold id="appearance" title="Appearance" hint="Light, dark, or match your phone">
+      <Fold id="appearance" title="Appearance" hint="Theme and Calm mode">
         <p className="muted mb-16">Applies to this device only.</p>
         <ThemeSwitch />
+        <hr className="divider" />
+        <CalmSwitch />
       </Fold>
 
       <Fold id="backup" title="Backup and restore" hint="Download or restore all records">

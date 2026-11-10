@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           // Apply a saved Light/Dark choice before first paint, so the page never flashes the wrong theme.
           dangerouslySetInnerHTML={{
-            __html: "try{var t=localStorage.getItem('menetekel:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}",
+            __html: "try{var t=localStorage.getItem('menetekel:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);if(localStorage.getItem('menetekel:calm')==='1')document.documentElement.setAttribute('data-calm','')}catch(e){}",
           }}
         />
       </head>

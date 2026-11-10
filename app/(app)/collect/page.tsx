@@ -14,6 +14,7 @@ import { Payment, findDuplicateReceipt, normalizeDate } from "@/lib/ledger";
 import AuthGuard from "@/components/AuthGuard";
 import Intro from "@/components/Intro";
 import Amt from "@/components/Amt";
+import { useCalm, usePaidPulse } from "@/lib/motion";
 import DensityToggle, { useDensity } from "@/components/DensityToggle";
 import UnitPanel, { StkState } from "@/components/UnitPanel";
 import { IconUpload, IconCheck, IconAlert, IconX, IconChevron } from "@/components/Icons";
@@ -27,6 +28,8 @@ function CollectInner() {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [stk, setStk] = useState<StkState | null>(null);
   const mv = useMonth(month);
+  const calm = useCalm();
+  const hot = usePaidPulse(Object.fromEntries(mv.eff.map((e) => [`${e.floor}|${e.unit}`, e.paid])), `${mv.year}-${month}`, calm);
   const cloud = cloudConfigured();
 
   // M-Pesa statement import
@@ -258,7 +261,7 @@ function CollectInner() {
                 {floorStates.map(({ e, s }) => {
                   const i = idx(e.floor, e.unit);
                   return (
-                    <tr key={e.unit} className={e.vacant ? "is-vacant" : ""}>
+                    <tr key={e.unit} className={`${e.vacant ? "is-vacant" : ""} ${hot.has(`${e.floor}|${e.unit}`) ? "just-paid" : ""}`}>
                       <td><span className="pill pill-brand">{e.unit}</span></td>
                       <td style={{ minWidth: 170 }}>
                         <input className="cell-input" aria-label={`${e.unit} tenant`} value={e.tenant} placeholder="Tenant name" disabled={e.vacant}
@@ -297,7 +300,7 @@ function CollectInner() {
           {/* phones: one card per unit */}
           <div className="urows" role="list">
             {floorStates.map(({ e, s }) => (
-              <button key={e.unit} type="button" role="listitem" className={`urow ${e.vacant ? "is-vacant" : ""}`}
+              <button key={e.unit} type="button" role="listitem" className={`urow ${e.vacant ? "is-vacant" : ""} ${hot.has(`${e.floor}|${e.unit}`) ? "just-paid" : ""}`}
                 onClick={() => setOpen({ floor: e.floor, unit: e.unit, prompt: false })}
                 aria-label={`${e.unit}, ${e.vacant ? "vacant" : e.tenant || "no tenant name yet"}, ${STATUS_LABEL[s.status]}${s.balance > 0 && !e.vacant ? `, owes ${s.balance.toLocaleString()} shillings` : ""}. Open payments and details`}>
                 <span className={`pill pill-${s.status}`}>{e.unit.replace(/^Unit\s*/i, "")}</span>

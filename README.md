@@ -58,6 +58,23 @@ month before, so a change carries forward by itself. `lib/config.ts` only suppli
 for the very first month. A single month's rent can also be edited on Collect rent, and that
 changes only that month.
 
+## The living building
+
+The dashboard puts the building in Nairobi: the sky follows Nairobi time (dawn, day, dusk, night),
+the jacarandas bloom purple in October and November, and at night paid windows glow from inside.
+Status colours never change, only the lighting does. When a payment arrives the unit's window
+glows for a moment, the total counts up, and the phone gives a short buzz. Changing month refills
+the windows from the ground floor up, and tapping a window grows it into the unit card.
+
+- **Month in review:** a full-screen recap (total collected, best floor, on-time payers, what is
+  still owed) that ends with a picture you can send on WhatsApp.
+- **Watch the year:** on Cumulative, play or drag a slider through the months.
+- **PDF reports:** the monthly report opens with a designed cover showing the building.
+- **Calm mode:** Settings, Appearance. Turns off all animation and the scenery. It also switches on
+  by itself when the phone is set to reduce motion.
+
+The sky rules and the review figures live in `lib/scene.ts` and `lib/review.ts`, both unit-tested.
+
 ## Tenants
 
 The **Tenants** tab is where each unit's occupant is recorded: name, phone, ID or passport number,
