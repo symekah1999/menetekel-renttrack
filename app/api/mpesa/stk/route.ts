@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdmin, verifyApproved } from "@/lib/server/supabaseAdmin";
 import { getMpesaConfig, normalizePhone, stkPush } from "@/lib/server/daraja";
 import { unitsForFloor, FLOORS } from "@/lib/config";
+import { overLimit, windowStart, MAX_PROMPTS_PER_HOUR } from "@/lib/server/limits";
 
 /** Safaricom's per-transaction ceiling for STK Push. */
 const MAX_AMOUNT = 250_000;
@@ -29,6 +30,19 @@ export async function POST(req: NextRequest) {
   const uid = await verifyApproved(req.headers.get("authorization"));
   if (!uid) {
     return NextResponse.json({ error: "Sign in with an approved account first." }, { status: 401 });
+  }
+
+  // One account can only send so many prompts an hour, so a stolen sign-in cannot be used to spam tenants.
+  const { count: sentLastHour } = await admin
+    .from("mpesa_requests")
+    .select("checkout_id", { count: "exact", head: true })
+    .eq("requested_by", uid)
+    .gte("created_at", windowStart());
+  if (overLimit(sentLastHour)) {
+    return NextResponse.json(
+      { error: `You have sent ${MAX_PROMPTS_PER_HOUR} prompts in the last hour, which is the limit. Try again later.` },
+      { status: 429 }
+    );
   }
 
   let body: { year?: number; month?: number; floor?: number; unit?: string; phone?: string; amount?: number };

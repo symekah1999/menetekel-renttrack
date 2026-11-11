@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdmin } from "@/lib/server/supabaseAdmin";
 import { getMpesaConfig, safeEqual } from "@/lib/server/daraja";
+import { clientIp, ipAllowed, parseAllowlist } from "@/lib/server/limits";
 import { parseCallback } from "@/lib/server/stkCallback";
 import { recordStkPayment, PendingRequest } from "@/lib/server/recordPayment";
 
@@ -14,6 +15,11 @@ export async function POST(req: NextRequest) {
   const cfg = getMpesaConfig();
   const admin = getAdmin();
   if (!cfg || !admin) return NextResponse.json(ACK);
+
+  // If the Safaricom addresses are configured, anything from elsewhere is ignored.
+  if (!ipAllowed(clientIp(req.headers), parseAllowlist(process.env.MPESA_CALLBACK_ALLOWED_IPS))) {
+    return NextResponse.json(ACK);
+  }
 
   // Daraja doesn't sign callbacks, so only requests that know the secret in
   // our callback URL are accepted (compared in constant time).

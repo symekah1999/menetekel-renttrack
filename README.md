@@ -58,6 +58,13 @@ month before, so a change carries forward by itself. `lib/config.ts` only suppli
 for the very first month. A single month's rent can also be edited on Collect rent, and that
 changes only that month.
 
+## Security
+
+See [SECURITY.md](SECURITY.md) for what protects the app and the owner's checklist (Supabase sign-ups,
+two-factor authentication, firewall rules, key rotation). Security headers live in
+`lib/securityHeaders.ts`; the per-account M-Pesa prompt limit and the optional Safaricom address
+allow-list (`MPESA_CALLBACK_ALLOWED_IPS`) live in `lib/server/limits.ts`.
+
 ## Finding things fast
 
 - **Search (Ctrl+K, Cmd+K or /):** jump to any page, unit or tenant. It understands the building:
