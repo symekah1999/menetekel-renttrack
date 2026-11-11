@@ -159,7 +159,7 @@ function buildMonthSheet(wb: ExcelJS.Workbook, mi: number, year: number) {
   ws.addRow([]);
   const gr = totalRow(
     ws,
-    ["GRAND TOTAL", "", "", "", "", "", gt.totalDue, gt.paid, gt.balance, `${gt.fullyPaid}/34 clear`],
+    ["GRAND TOTAL", "", "", "", "", "", gt.totalDue, gt.paid, gt.balance, `${gt.fullyPaid}/${gt.occupied} clear`],
     GOLD, "FF1E1A33"
   );
   moneyCols(gr, [7, 8, 9]);
@@ -184,7 +184,7 @@ export async function downloadYearExcel() {
     if (opened) { yCharges += t.monthCharges; yPaid += t.paid; running += t.balance; }
     const row = sum.addRow(
       opened
-        ? [m, t.monthCharges, t.paid, t.balance, `${t.rate}%`, `${t.fullyPaid}/34`, running]
+        ? [m, t.monthCharges, t.paid, t.balance, `${t.rate}%`, `${t.fullyPaid}/${t.occupied}`, running]
         : [m, "", "", "", "not started", "", ""]
     );
     styleDataRow(row, { zebra: mi % 2 === 1 });

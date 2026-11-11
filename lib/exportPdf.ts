@@ -296,7 +296,7 @@ export function downloadFloorPdf(mi: number, floor: number) {
     { label: "Due this month", value: fmt(t.totalDue) },
     { label: "Collected", value: fmt(t.paid), color: GREEN },
     { label: "Outstanding", value: fmt(Math.max(t.balance, 0)), color: t.balance > 0 ? RED : GREEN },
-    { label: "Clear", value: `${t.fullyPaid}/${data.length}`, color: NAVY },
+    { label: "Clear", value: `${t.fullyPaid}/${t.occupied}`, color: NAVY },
   ]);
 
   autoTable(doc, {

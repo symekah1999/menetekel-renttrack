@@ -33,7 +33,7 @@ describe("property configuration", () => {
 });
 
 describe("computeTotals", () => {
-  it("counts a vacant unit as no charge and a paid unit as clear", () => {
+  it("counts a vacant unit as no charge, and only occupied units as clear", () => {
     const rows = blankMonth(0, 2026).slice(0, 2);
     rows[0] = { ...rows[0], paid: rows[0].rent };
     rows[1] = { ...rows[1], vacant: true };
@@ -42,7 +42,20 @@ describe("computeTotals", () => {
     expect(t.paid).toBe(rows[0].rent);
     expect(t.rate).toBe(100);
     expect(t.vacant).toBe(1);
-    expect(t.fullyPaid).toBe(2);
+    expect(t.occupied).toBe(1);
+    expect(t.fullyPaid).toBe(1); // the vacant unit is not "clear"
+  });
+
+  it("never reports more clear units than occupied ones, however many units are vacant", () => {
+    // mostly vacant building, like one still filling up
+    const rows = blankMonth(0, 2026).map((r, i) => (i < 4 ? r : { ...r, vacant: true }));
+    rows[0] = { ...rows[0], paid: rows[0].rent };
+    const t = computeTotals(rows);
+    expect(t.occupied).toBe(4);
+    expect(t.vacant).toBe(30);
+    expect(t.fullyPaid).toBe(1);
+    expect(t.defaulters).toBe(3);
+    expect(t.fullyPaid + t.defaulters).toBe(t.occupied);
   });
 
   it("is each month on its own: nothing from an earlier month is added", () => {

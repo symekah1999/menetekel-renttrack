@@ -251,7 +251,9 @@ export function computeTotals(rows: MonthData): Totals {
     const d = monthDue(r);
     due += d;
     paid += r.paid;
-    if (r.vacant) vacant++; else occupied++;
+    // A vacant unit owes nothing, so it is neither clear nor behind: only occupied units are counted.
+    if (r.vacant) { vacant++; continue; }
+    occupied++;
     if (d - r.paid <= 0) fullyPaid++;
     else defaulters++;
   }
