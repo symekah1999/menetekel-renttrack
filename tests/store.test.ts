@@ -117,3 +117,14 @@ describe("backup", () => {
     expect(importBackup("not json").ok).toBe(false);
   });
 });
+
+describe("backup includes the expenses ledger", () => {
+  it("exports and restores expenses alongside months and payments", () => {
+    const ls = (globalThis as unknown as { localStorage: Storage }).localStorage;
+    ls.clear();
+    ls.setItem("menetekel:expenses:2026", JSON.stringify([{ id: "e1", amount: 500 }]));
+    ls.setItem("menetekel:payments:2026", "[]");
+    const parsed = JSON.parse(exportBackup());
+    expect(Object.keys(parsed.data).sort()).toEqual(["menetekel:expenses:2026", "menetekel:payments:2026"]);
+  });
+});

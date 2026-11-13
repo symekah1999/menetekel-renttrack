@@ -276,8 +276,8 @@ export function floorTotalsFull(mi: number, floor: number, year = getActiveYear(
 
 /* ---------- backup / restore ---------- */
 
-/** Keys that hold real records (months, ledgers, active year), not sync bookkeeping. */
-const DATA_KEY = /^menetekel:(\d{4}:\d{1,2}|payments:\d{4}|activeYear)$/;
+/** Keys that hold real records (months, payment and expense ledgers, active year), not sync bookkeeping. */
+const DATA_KEY = /^menetekel:(\d{4}:\d{1,2}|(?:payments|expenses):\d{4}|activeYear)$/;
 
 export function exportBackup(): string {
   const data: Record<string, string> = {};

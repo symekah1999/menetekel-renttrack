@@ -58,6 +58,25 @@ month before, so a change carries forward by itself. `lib/config.ts` only suppli
 for the very first month. A single month's rent can also be edited on Collect rent, and that
 changes only that month.
 
+## Reports
+
+Reports has eight tabs:
+
+- **Overview:** any month, quarter, the year so far or a custom range, with changes against the
+  previous period, collected against owed by month with occupancy, when money came in (by the due
+  day, the 10th, month end), how tenants paid, rent against water, and floors you can open to see
+  each unit. **Owner report (PDF)** turns the period into a one-page summary.
+- **Statement:** the whole building for one month, every unit paid, part-paid, owing or vacant,
+  as a PDF or Excel file.
+- **Arrears:** everything owed to date, aged by how long it has been owed.
+- **Tenants:** a statement per tenant covering just their stay, with the deposit held.
+- **Expenses:** repairs, utilities, staff and more, so reports show net income. Run
+  `supabase-expenses.sql` once in Supabase so expenses sync between devices.
+- **Tax:** the Monthly Rental Income schedule (7.5% of rent received, due by the 20th of the
+  following month). A working aid, not tax advice; the rate is a setting.
+- **Year end:** a summary PDF and CSV files for an accountant.
+- **Checks:** gaps, duplicates and missing details that would make the reports wrong.
+
 ## Security
 
 See [SECURITY.md](SECURITY.md) for what protects the app and the owner's checklist (Supabase sign-ups,

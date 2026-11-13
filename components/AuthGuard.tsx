@@ -7,6 +7,7 @@ import { getMyProfile, pullYears, pullPayments, flushDirty, flushPayments } from
 import { getActiveYear } from "@/lib/store";
 import { IconInfo } from "./Icons";
 import LaunchMark from "./LaunchMark";
+import { flushExpenses, pullExpenses } from "@/lib/expensesStore";
 
 type Phase = "loading" | "local" | "unapproved" | "ready";
 
@@ -54,6 +55,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       await flushDirty();
       await flushPayments([y - 1, y]);
       await Promise.all([pullYears([y - 1, y]), pullPayments([y - 1, y])]);
+      // Expenses are optional: if their table is missing, the rest of the app still loads.
+      try { await flushExpenses([y - 1, y]); await pullExpenses([y - 1, y]); } catch { /* ignore */ }
       await hold;
       if (!cancelled) setPhase("ready");
     }

@@ -1300,3 +1300,92 @@ footer.site { max-width: 1120px; margin: 0 auto; padding: 24px 20px 32px; color:
 :root[data-theme="dark"] .win[data-status="part"] .win-no { color: var(--ink); }
 .only-wide { display: inline-flex; }
 @media (max-width: 760px) { .only-wide { display: none; } }
+
+/* =========================================================
+   Reports
+   ========================================================= */
+.rtabs {
+  display: flex; gap: 4px; overflow-x: auto; margin-bottom: 18px; padding: 4px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px; scrollbar-width: none;
+}
+.rtabs::-webkit-scrollbar { display: none; }
+.rtabs button {
+  flex: none; min-height: 38px; padding: 0 16px; border: none; background: none; border-radius: 999px;
+  font-weight: 650; font-size: 15px; color: var(--ink-2); white-space: nowrap;
+}
+.rtabs button:hover { color: var(--ink); }
+.rtabs button[aria-current="page"] { background: var(--grad-brand); color: #fff; box-shadow: 0 6px 14px -8px rgba(60, 36, 140, 0.8); }
+.rtab-body { animation: rise-in 0.35s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.period-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.period-bar .select { width: auto; }
+.rkpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.kpi .delta { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 700; }
+.delta.good { color: var(--paid); }
+.delta.bad { color: var(--owe); }
+.delta.same { color: var(--ink-3); font-weight: 600; }
+.rgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.rgrid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 1000px) { .rgrid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .rgrid-2 { grid-template-columns: 1fr; } }
+
+/* trend chart */
+.chart-wrap { overflow-x: auto; }
+.trend { width: 100%; min-width: 520px; height: auto; display: block; }
+.trend .grid { stroke: var(--line); stroke-width: 1; }
+.trend .hit { fill: transparent; }
+.trend .bar:hover .hit { fill: color-mix(in srgb, var(--brand) 6%, transparent); }
+.trend .bar.on .hit { fill: color-mix(in srgb, var(--brand) 11%, transparent); }
+.trend .paid { fill: var(--paid); }
+.trend .owed { fill: color-mix(in srgb, var(--owe) 32%, transparent); }
+.trend .none { fill: var(--line); }
+.trend .lbl { font-size: 11px; fill: var(--ink-3); text-anchor: middle; font-family: var(--font-body); }
+.trend .bar.on .lbl { fill: var(--ink); font-weight: 700; }
+.trend .occ { fill: none; stroke: var(--brand); stroke-width: 2.2; stroke-linejoin: round; }
+.trend .occ-dot { fill: var(--surface); stroke: var(--brand); stroke-width: 2; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--ink-2); margin-top: 8px; }
+.chart-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.chart-legend .k-paid { background: var(--paid); }
+.chart-legend .k-owed { background: color-mix(in srgb, var(--owe) 32%, transparent); }
+.chart-legend .k-occ { background: var(--brand); height: 3px; border-radius: 2px; vertical-align: 3px; }
+
+/* meters, channel bars */
+.meter-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 46px; gap: 10px; align-items: center; padding: 6px 0; font-size: 14.5px; }
+.meter-row b { text-align: right; }
+.stackbar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--line); margin-bottom: 12px; }
+.stackbar i, .ch-list i { display: block; }
+.c-stk { background: var(--paid); } .c-manual { background: var(--brand); } .c-csv { background: var(--part-fill); } .c-earlier { background: var(--vacant); }
+.ch-list { list-style: none; display: grid; gap: 8px; font-size: 14.5px; }
+.ch-list li { display: flex; align-items: center; gap: 8px; }
+.ch-list li i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.ch-list li b { margin-left: auto; text-align: right; }
+.agebar { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--line); }
+.agebar .a0 { background: var(--part-fill); } .agebar .a1 { background: #e07a3a; } .agebar .a2 { background: var(--owe); } .agebar .a3 { background: #8e1f2a; }
+
+/* drill-down rows */
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--surface-2); }
+.drill { width: 16px; height: 16px; color: var(--ink-3); transition: transform 0.2s; }
+.drill.open { transform: rotate(90deg); }
+tr.sub-row td { background: var(--surface-2); font-size: 14px; }
+.inline-link { color: var(--brand); font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+
+/* expenses list, checks */
+.ex-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 11px 2px; }
+.ex-row.is-reversed { opacity: 0.55; }
+.ex-row.is-reversed .recent-amt { text-decoration: line-through; }
+.feed-ic.sev-high { background: var(--owe-tint); color: var(--owe); }
+.feed-ic.sev-medium { background: var(--part-tint); color: var(--part); }
+.feed-ic.sev-low { background: var(--surface-2); color: var(--ink-3); }
+.pill-none::before { background: var(--ink-3); }
+@media (max-width: 760px) {
+  .meter-row { grid-template-columns: 110px minmax(0, 1fr) 40px; font-size: 13.5px; }
+  .rtabs button { padding: 0 13px; font-size: 14.5px; }
+  .rkpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* KPI rows sized to how many cards they hold, so none is left alone on a line */
+.rkpis:has(> :nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rkpis:has(> :nth-child(4):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.rkpis:has(> :nth-child(5):last-child) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.rkpis:has(> :nth-child(6):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 760px) { .rkpis.rkpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ch-list li b { white-space: nowrap; }

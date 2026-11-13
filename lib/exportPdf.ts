@@ -9,11 +9,11 @@ import {
   monthDue, getActiveYear, Entry,
 } from "./store";
 
-const NAVY: [number, number, number] = [62, 42, 126];
-const GOLD: [number, number, number] = [224, 165, 38];
-const GREEN: [number, number, number] = [23, 128, 90];
-const RED: [number, number, number] = [191, 59, 59];
-const GREY: [number, number, number] = [110, 118, 130];
+export const NAVY: [number, number, number] = [62, 42, 126];
+export const GOLD: [number, number, number] = [224, 165, 38];
+export const GREEN: [number, number, number] = [23, 128, 90];
+export const RED: [number, number, number] = [191, 59, 59];
+export const GREY: [number, number, number] = [110, 118, 130];
 
 type Doc = jsPDF & { lastAutoTable: { finalY: number } };
 
@@ -116,7 +116,7 @@ function drawCover(
   doc.text("Rent collected with RentTrack", 20, h - 16);
 }
 
-function header(doc: jsPDF, title: string, subtitle: string) {
+export function header(doc: jsPDF, title: string, subtitle: string) {
   const w = doc.internal.pageSize.getWidth();
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, w, 30, "F");
@@ -136,7 +136,7 @@ function header(doc: jsPDF, title: string, subtitle: string) {
   doc.text(subtitle, 31, 21.5);
 }
 
-function kpiBoxes(
+export function kpiBoxes(
   doc: jsPDF, y: number,
   items: { label: string; value: string; color?: [number, number, number] }[]
 ) {
@@ -160,7 +160,7 @@ function kpiBoxes(
   return y + 24;
 }
 
-function footer(doc: jsPDF, hasCover = false) {
+export function footer(doc: jsPDF, hasCover = false) {
   const pages = doc.getNumberOfPages();
   const first = hasCover ? 2 : 1; // a cover page carries no footer or number
   const total = hasCover ? pages - 1 : pages;
@@ -179,7 +179,7 @@ function footer(doc: jsPDF, hasCover = false) {
   }
 }
 
-function signatureBlock(doc: jsPDF, y: number) {
+export function signatureBlock(doc: jsPDF, y: number) {
   const h = doc.internal.pageSize.getHeight();
   if (y > h - 45) return;
   doc.setDrawColor(120, 128, 140);
@@ -192,7 +192,7 @@ function signatureBlock(doc: jsPDF, y: number) {
   doc.text("Received by / Tenant signature", 115, y + 19);
 }
 
-const tableTheme = {
+export const tableTheme = {
   headStyles: {
     fillColor: NAVY, textColor: [255, 255, 255] as [number, number, number],
     fontSize: 7.5, fontStyle: "bold" as const, halign: "center" as const,
