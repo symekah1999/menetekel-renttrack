@@ -8,13 +8,14 @@ export interface TenantDetails {
   idNo: string;
   email: string;
   moveIn: string; // yyyy-mm-dd, or ""
+  workplace: string;
   deposit: number;
   notes: string;
   vacant: boolean;
 }
 
 export const EMPTY_TENANT: TenantDetails = {
-  tenant: "", phone: "", idNo: "", email: "", moveIn: "", deposit: 0, notes: "", vacant: false,
+  tenant: "", phone: "", idNo: "", email: "", moveIn: "", workplace: "", deposit: 0, notes: "", vacant: false,
 };
 
 export const unitId = (floor: number, unit: string) => `${floor}|${unit}`;
@@ -26,6 +27,7 @@ export function detailsOf(e: Entry): TenantDetails {
     idNo: e.idNo ?? "",
     email: e.email ?? "",
     moveIn: e.moveIn ?? "",
+    workplace: e.workplace ?? "",
     deposit: e.deposit ?? 0,
     notes: e.notes ?? "",
     vacant: e.vacant,
@@ -41,6 +43,7 @@ export function cleanDetails(d: TenantDetails): TenantDetails {
     idNo: d.idNo.trim(),
     email: d.email.trim(),
     moveIn: d.moveIn,
+    workplace: (d.workplace ?? "").trim().replace(/\s+/g, " "),
     deposit: Math.max(0, Math.round(d.deposit || 0)),
     notes: d.notes.trim(),
     vacant: false,
@@ -87,7 +90,7 @@ export function applyTenantChange(
     changed = true;
     const next: Entry = { ...r, tenant: d.tenant, phone: d.phone, vacant: d.vacant, ts: now };
     // optional fields are removed when blank, so a vacated unit keeps no old details
-    const opt = { idNo: d.idNo, email: d.email, moveIn: d.moveIn, deposit: d.deposit, notes: d.notes };
+    const opt = { idNo: d.idNo, email: d.email, moveIn: d.moveIn, workplace: d.workplace, deposit: d.deposit, notes: d.notes };
     for (const [k, v] of Object.entries(opt)) {
       if (v) (next as unknown as Record<string, unknown>)[k] = v;
       else delete (next as unknown as Record<string, unknown>)[k];

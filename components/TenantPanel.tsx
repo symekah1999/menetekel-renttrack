@@ -8,6 +8,7 @@ import {
   TenantDetails, cleanDetails, setTenantFrom, tenantHistory, validEmail, validPhone,
 } from "@/lib/tenants";
 import { IconAlert, IconCheck, IconX } from "./Icons";
+import { agreementFields } from "@/lib/agreement";
 
 /** Side panel to fill in or change a unit's tenant, effective from a chosen month. */
 export default function TenantPanel({
@@ -55,6 +56,11 @@ export default function TenantPanel({
 
   // The old number would send M-Pesa prompts to the wrong person.
   const oldPhoneKept = changingPerson && !form.vacant && !!form.phone.trim() && form.phone.trim() === current.phone.trim();
+
+  async function agreement() {
+    const { downloadTenancyAgreementPdf } = await import("@/lib/agreementPdf");
+    downloadTenancyAgreementPdf(agreementFields(floor, unit, cleanDetails(form)));
+  }
 
   function save(e: React.FormEvent) {
     e.preventDefault();
@@ -121,6 +127,9 @@ export default function TenantPanel({
                 <input className="input" value={form.idNo} disabled={form.vacant} autoComplete="off"
                   onChange={(e) => set("idNo", e.target.value)} /></label>
             </div>
+            <label className="field"><span>Place of work (for the tenancy agreement)</span>
+              <input className="input" value={form.workplace} disabled={form.vacant} autoComplete="off"
+                onChange={(e) => set("workplace", e.target.value)} /></label>
             <label className="field"><span>Email (optional)</span>
               <input className="input" type="email" inputMode="email" value={form.email} disabled={form.vacant}
                 onChange={(e) => set("email", e.target.value)} /></label>
@@ -165,6 +174,15 @@ export default function TenantPanel({
             <button type="submit" className="btn btn-primary"><IconCheck /> Save details</button>
           </div>
         </form>
+
+        <section className="card card-flat mt-16" aria-labelledby="ta">
+          <h3 className="h3 mb-8" id="ta">Tenancy agreement</h3>
+          <p className="muted small mb-12">
+            The Menetekel Apartments agreement as a PDF, with this tenant&apos;s name, ID, workplace, phone and room filled in.
+            It uses what is typed above, so save first if you want the details kept. Anything left blank prints as a line to fill by hand.
+          </p>
+          <button type="button" className="btn btn-line" onClick={agreement} disabled={form.vacant}>Download agreement (PDF)</button>
+        </section>
 
         <section className="card card-flat mt-16" aria-labelledby="th">
           <h3 className="h3 mb-12" id="th">Who has lived here in {year}</h3>

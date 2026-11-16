@@ -19,6 +19,7 @@ export interface Entry {
   idNo?: string;
   email?: string;
   moveIn?: string; // yyyy-mm-dd
+  workplace?: string; // place of work, printed on the tenancy agreement
   deposit?: number;
   notes?: string;
   /** Epoch ms of the last edit, used to merge edits made on different devices. */
@@ -83,6 +84,7 @@ function normalize(e: Partial<Entry>, mi: number, year: number): Entry {
     ...(e.idNo ? { idNo: e.idNo } : {}),
     ...(e.email ? { email: e.email } : {}),
     ...(e.moveIn ? { moveIn: e.moveIn } : {}),
+    ...(e.workplace ? { workplace: e.workplace } : {}),
     ...(e.deposit ? { deposit: e.deposit } : {}),
     ...(e.notes ? { notes: e.notes } : {}),
     ...(typeof e.ts === "number" ? { ts: e.ts } : {}),
@@ -128,6 +130,7 @@ export function blankMonth(mi: number, year = getActiveYear()): MonthData {
         ...(carry?.idNo ? { idNo: carry.idNo } : {}),
         ...(carry?.email ? { email: carry.email } : {}),
         ...(carry?.moveIn ? { moveIn: carry.moveIn } : {}),
+        ...(carry?.workplace ? { workplace: carry.workplace } : {}),
         ...(carry?.deposit ? { deposit: carry.deposit } : {}),
         ...(carry?.notes ? { notes: carry.notes } : {}),
       });
